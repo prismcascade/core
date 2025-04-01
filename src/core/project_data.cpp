@@ -1,7 +1,5 @@
 #include <project_data.hpp>
 
-ProjectData_t project_data;
-
 bool AddClip(Clip_t clip)
 {
 	return false;
@@ -18,6 +16,11 @@ bool CutClip(Clip_t *clip, int cut_frame)
 }
 
 bool MoveClip(Clip_t *clip, int frame_start, int layer)
+{
+	return false;
+}
+
+bool FlexClip(Clip_t *clip, int frame_start, int frame_end)
 {
 	return false;
 }

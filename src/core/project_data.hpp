@@ -94,7 +94,8 @@ struct PluginMetaDataInternal {
 };
 
 
-// --この下一旦残しといて----------------------------------------
+// --この下残しといて----------------------------------------
+
 extern "C" {
 	typedef struct ProjectMeta{
 		int image_frame_rate;
@@ -150,9 +151,21 @@ extern "C" {
 		Clip_t* clips[MAX_LAYER_SIZE];
 	}ProjectData_t;
 
+	ProjectData_t project_data;
+
+	// project_dataにclipを追加する関数
 	bool AddClip(Clip_t clip);
+
+	// project_dataからclipを削除する関数
 	bool DeleteClip(Clip_t* clip);
+
+	// project_dataのclipを分割する関数
 	bool CutClip(Clip_t* clip, int cut_frame);
+
+	// project_dataのclipを移動する関数
 	bool MoveClip(Clip_t* clip, int frame_start, int layer);
+
+	//  project_dataのclipを伸縮する関数
+	bool FlexClip(Clip_t* clip, int frame_start, int frame_end);
 }
 
