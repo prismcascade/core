@@ -2,6 +2,7 @@
 #include <memory>
 #include <map>
 #include <string>
+#include <array>
 #include <vector>
 #include <plugin/dynamic_library.hpp>
 #include <core/project_data.hpp>
@@ -10,10 +11,10 @@
 // handle -> data
 std::map<int, PluginMetaDataInternal> plugin_metadata_instance;
 std::map<const char*, std::shared_ptr<std::string>> text_instance;
-std::map<int, std::vector<std::tuple<std::string, VariableType>>> ParameterTypeInfo;
+std::map<int, std::array<std::vector<std::tuple<std::string, VariableType>>, 2>> ParameterTypeInfo;
 
 bool allocate_param(int plugin_handler, bool is_output, VariableType type, const char* name, void* metadata){
-    ParameterTypeInfo[plugin_handler].push_back({std::string(name), type});
+    ParameterTypeInfo[plugin_handler][is_output].push_back({std::string(name), type});
     return true;
 }
 
