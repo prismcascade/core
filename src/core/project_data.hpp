@@ -14,7 +14,7 @@
 // 動作確認してません。とりあえず書いた。
 
 // 型一覧。有理数は保留した。
-enum class VariableType {	
+typedef enum {	
 	Int,
 	Bool, 
 	Float, 
@@ -22,7 +22,7 @@ enum class VariableType {
 	Vector,	// これ関数との受け渡し大変だと思う。固定長配列にしない？
 	Video,	// VideoFrameとVideoClipは上位互換側に寄せたい。RGBやRGBAも同様。
 	Audio,	// 多分ここにバッファの概念は入ってきます。データ長め
-};
+}VariableType;
 
 // 色空間とかはソフトウェア全体で統一してた方が良さそうなので一旦書いてない。
 struct Video{
@@ -63,10 +63,10 @@ struct Project{
 		Project::Meta::Frame frame;
 	};
 	
-	enum class LayerType {
+	typedef enum {
 		MacroType,
 		FunctionType
-	};
+	}LayerType;
 	struct Layer {
 		LayerType type;
 		union {
