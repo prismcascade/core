@@ -1,15 +1,5 @@
 #pragma once
 
-#define PLUGIN_NAME_BYTES 256
-#define PLUGIN_UUID_SIZE 128
-#define PLUGIN_PARAM_BYTES 2048
-#define PLUGIN_PARAM_QUANTITY 256
-#define PLUGIN_VAR_NAME_BYTES 256
-#define PLUGIN_VAR_QUANTITY 256
-#define GLOBAL_DATA_NAME_BYTES 256
-#define GLOBAL_DATA_BYTES 2048
-#define GLOBAL_DATA_QUANTITY 2048
-
 #include <cstdint>
 #include <tuple>
 
@@ -43,18 +33,19 @@ struct VideoFrame {
 	std::uint8_t* frame_buffer = nullptr;  // RGBA
 };
 
-struct Audio {
-};
+typedef struct AudioParam {
+}AudioParam_t;
 
-struct TextParam {
+typedef struct TextParam {
     int size = 0;
     const char* buffer = nullptr;
-};
-struct VectorParam {
+}TextParam_t;
+
+typedef struct VectorParam {
     VariableType_t type;
     int size = 0;
     void* value = nullptr;
-};
+}VectorParam_t;
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
@@ -104,23 +95,40 @@ extern "C" {
 		int screen_vertical;
 	}ProjectMeta_t;
 
+	typedef struct VarData{
+		VariableType_t var_type;
+		char var_name;
+		union VarUnion{
+			int int_param;
+			bool bool_param;
+			float float_param;
+			TextParam_t text_param;
+			VectorParam_t vector_param;
+			VectorParam_t video_param;
+			AudioParam_t audio_param;
+		};
+		union VarUnion var_union;
+	}VarData_t;
+
 	typedef struct GlobalData{
-		char global_data_names[GLOBAL_DATA_QUANTITY][GLOBAL_DATA_NAME_BYTES];
-		VariableType_t global_data_types[GLOBAL_DATA_QUANTITY];
-		char global_data[GLOBAL_DATA_QUANTITY][GLOBAL_DATA_BYTES];
+		int data_quantity;
+		VarData_t* global_data;
 	}GlobalData_t;
 
 	typedef struct PluginMeta{
 		int protocol_version;
-		char plugin_uuid[PLUGIN_UUID_SIZE];
-		char plugin_name[PLUGIN_NAME_BYTES];
-		char params[PLUGIN_PARAM_QUANTITY][PLUGIN_PARAM_BYTES];
+		char* plugin_uuid;
+		char* plugin_name;
+		int param_size;
+		VarData_t* params;
 	}PluginMeta_t;
 
 	typedef struct EffectClip{
 		PluginMeta_t plugin_meta;
-		char input_variables[PLUGIN_VAR_QUANTITY][PLUGIN_VAR_NAME_BYTES];		// GlobalDataとの紐づけ (何番目の引数にどのグローバルデータを入れるか)
-		char output_variables[PLUGIN_VAR_QUANTITY][PLUGIN_VAR_NAME_BYTES];		// GlobalDataとの紐づけ (何番目の返り値をどのグローバルデータに入れるか)
+		int input_size;
+		int output_size;
+		VarData_t* input_variables;		// GlobalDataとの紐づけ (何番目の引数にどのグローバルデータを入れるか)
+		VarData_t* output_variables;	// GlobalDataとの紐づけ (何番目の返り値をどのグローバルデータに入れるか)
 	}EffectClip_t;
 
 	typedef struct MacroClip{
@@ -140,15 +148,20 @@ extern "C" {
 		int frame_end;
 		union ClipUnion{
 			EffectClip_t macro_clip;
-			MacroClip_t Effect_clip;
+			MacroClip_t effect_clip;
 		};
 		union ClipUnion clip_union;
 	}Clip_t;
 
+	typedef struct TimelineData{
+		int clip_quantity;
+		Clip_t* clip;
+	}TimelineData_t;
+
 	typedef struct ProjectData{
 		ProjectMeta_t project_meta;
 		GlobalData_t global_data;
-		Clip_t* clips[MAX_LAYER_SIZE];
+		TimelineData_t timeline_data;
 	}ProjectData_t;
 
 	ProjectData_t project_data;
