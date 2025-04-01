@@ -44,15 +44,12 @@ struct VideoFrame {
 };
 
 struct Audio {
-	//TODO : 考えて書く
 };
-
 
 struct TextParam {
     int size = 0;
-    char* buf = nullptr;
+    const char* buffer = nullptr;
 };
-
 struct VectorParam {
     VariableType type;
     int size = 0;
@@ -61,7 +58,7 @@ struct VectorParam {
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
-// 受け渡し時の一時的な入れ物（void*）
+// 受け渡し時の一時的な入れ物
 struct Parameter {
     VariableType type;
     void* value = nullptr;
@@ -69,7 +66,7 @@ struct Parameter {
 
 struct ParameterPack {
     int size = 0;
-    Parameter* parameter = nullptr;
+    Parameter* parameters = nullptr;
 };
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
@@ -88,6 +85,15 @@ struct PluginMetaData {
 };
 
 }
+
+struct PluginMetaDataInternal {
+    int protocol_version = 1;
+    PluginType type;
+    std::string uuid;
+    std::string name;
+};
+
+/*
 // 書いてる途中
 struct Project{
 	struct ProjectMeta{
@@ -155,3 +161,4 @@ struct Project{
 	Layer layers[MAX_LAYER_SIZE];
 };
 Project project;
+*/

@@ -15,7 +15,7 @@
 
 extern "C" {
 
-// input/output のパラメータ一覧と型, requiredEffect, handlableEffect 等を返す
+// input/output のパラメータ一覧と型, requiredEffect, handleableEffect 等を返す
 EXPORT bool API_CALL getMetaInfo(
     int plugin_handler,
     PluginMetaData metadata,

@@ -5,10 +5,14 @@
 #include <optional>
 #include <set>
 
-class PngSequenceManager {
+class HandleManager {
 public:
-    std::string freshID(){
+    static std::string freshID(){
         return std::format("{:012d}", current_id++);
+    }
+
+    static int freshHandler(){
+        return current_id++;
     }
 
     // std::optional<Image> operator[](std::string id){
@@ -16,5 +20,5 @@ public:
     // }
 
 private:
-    long current_id = 0;
+    static long current_id;
 };

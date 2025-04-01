@@ -40,9 +40,14 @@ DynamicLibrary::DynamicLibrary(const std::string& path){
 }
 
 void* DynamicLibrary::operator[] (const std::string& symbolName) {
+    void* function_pointer;
 #ifdef _IS_WINDOWS_BUILD
-    return (void*)::GetProcAddress((HMODULE)handle_.get(), symbolName.c_str());
+    function_pointer = (void*)::GetProcAddress((HMODULE)handle_.get(), symbolName.c_str());
 #else
-    return ::dlsym(handle_.get(), symbolName.c_str());
+    function_pointer = ::dlsym(handle_.get(), symbolName.c_str());
 #endif
+    if(function_pointer)
+        return function_pointer;
+    else
+        throw std::runtime_error("failed to resolve function pointer (the plugin may be corrupted)");
 }
