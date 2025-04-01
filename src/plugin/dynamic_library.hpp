@@ -1,24 +1,17 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
 class DynamicLibrary {
 public:
-    DynamicLibrary() : handle_(nullptr) {}
-    ~DynamicLibrary() { unload(); }
+    DynamicLibrary() = delete;  // デフォルト構築禁止
+    DynamicLibrary(const std::string& path);
 
-    // とりあえず Copy 禁止 （必要なら shared_ptr で持ちまわす）
-    DynamicLibrary(const DynamicLibrary&) = delete;
-    DynamicLibrary& operator=(const DynamicLibrary&) = delete;
-
-    bool load(const std::string& path);
-    void unload();
-
-    void* resolveSymbol(const std::string& symbolName);
-
-    // Check if loaded
-    operator bool() const { return handle_ != nullptr; }
+    // resolve symbol name
+    void* operator[] (const std::string& symbolName);
 
 private:
-    void* handle_; // Windows: HMODULE, Linux: void*
+    std::shared_ptr<void> handle_;  // Windows: HMODULE, Linux: void*
+    bool load(const std::string& path);
 };

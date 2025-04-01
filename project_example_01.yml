@@ -1,0 +1,41 @@
+version: 1
+
+metadata:
+  width: 1920
+  height: 1080
+  fps: 60
+  sampling_rate: 44100
+
+project:
+  type: "video"
+  start_frame: 0
+  plugin_uuid: "00000000-0000-0000-0000-000000000000"
+  plugin_name: "Yukkuri Movie Maker Tool"
+  plugin_type: "macro"
+  required:
+    - handler: "talk_2_emote"
+    - handler: "psdtool"
+  arguments:
+    - type: "video"
+      start_frame: 4
+      plugin_uuid: "00000000-0000-0000-0000-000000000001"
+      argument_name: "input_video"
+      plugin_name: "input_video_effect"
+      plugin_type: "effect"
+      arguments:
+        - type: "text"
+          argument_name: "avi_file_name"
+          value: "una_chan.avi"
+    - type: "video"
+      start_frame: 2
+      plugin_uuid: "00000000-0000-0000-0000-000000000002"
+      argument_name: "input_image"
+      plugin_name: "input_image_effect"
+      plugin_type: "effect"
+      arguments:
+        - type: "text"
+          argument_name: "png_file_name"
+          value: "kiritan.png"
+    - type: "integer"
+      argument_name: "param1"
+      value: 120

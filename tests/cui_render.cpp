@@ -4,10 +4,9 @@
 #include <plugin/dynamic_library.hpp>
 
 int main(){
-    auto lib = std::make_shared<DynamicLibrary>();
-    lib->load("test_library.dll");
-    if(*lib){
-        void* ptr = lib->resolveSymbol("Handle");
+    try{
+        DynamicLibrary lib("test_library.dll");
+        void* ptr = lib["Handle"];
         if(ptr){
             std::function<bool(std::string*, int*)> Handle(reinterpret_cast<bool(*)(std::string*, int*)>(ptr));
             std::string buf;
@@ -22,7 +21,7 @@ int main(){
         } else {
             std::cout << "Error (Resolving Handle)" << std::endl;
         }
-    } else {
+    } catch(...) {
         std::cout << "Error (Loading File)" << std::endl;
     }
 }

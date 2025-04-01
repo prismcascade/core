@@ -1,4 +1,5 @@
 #include "dynamic_library.hpp"
+#include <stdexcept>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define _IS_WINDOWS_BUILD
@@ -10,46 +11,38 @@
     #include <dlfcn.h>
 #endif
 
-bool DynamicLibrary::load(const std::string& path) {
-    unload();  // 多重ロード防止
-
+DynamicLibrary::DynamicLibrary(const std::string& path){
+    void* handle = nullptr;;
 #ifdef _IS_WINDOWS_BUILD
     // Windows
     HMODULE mod = ::LoadLibraryA(path.c_str());
-    if (!mod) {
-        return false;  // 失敗
-    }
-    handle_ = mod;
+    if (!mod)
+        throw std::runtime_error("failed to load plugin");
+    handle = mod;
 #else
     // Linux / Macintosh
     void* so = ::dlopen(path.c_str(), RTLD_NOW);
-    if (!so) {
-        return false;
-    }
-    handle_ = so;
+    if (!so)
+        throw std::runtime_error("failed to load plugin");
+    handle = so;
 #endif
 
-    return true;  // 成功
-}
-
-void DynamicLibrary::unload() {
-    if (handle_) {
+    // shared_ptr に deleter 付きでセットする
+    handle_ = {handle, [](void* handle){
+        if (handle) {
 #ifdef _IS_WINDOWS_BUILD
-        ::FreeLibrary((HMODULE)handle_);
+            ::FreeLibrary((HMODULE)handle);
 #else
-        ::dlclose(handle_);
+            ::dlclose(handle);
 #endif
-        handle_ = nullptr;
-    }
+        }
+    }};
 }
 
-void* DynamicLibrary::resolveSymbol(const std::string& symbolName) {
-    if (!handle_) {
-        return nullptr;
-    }
+void* DynamicLibrary::operator[] (const std::string& symbolName) {
 #ifdef _IS_WINDOWS_BUILD
-    return (void*)::GetProcAddress((HMODULE)handle_, symbolName.c_str());
+    return (void*)::GetProcAddress((HMODULE)handle_.get(), symbolName.c_str());
 #else
-    return ::dlsym(handle_, symbolName.c_str());
+    return ::dlsym(handle_.get(), symbolName.c_str());
 #endif
 }

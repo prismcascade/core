@@ -10,33 +10,84 @@
 #define GLOBAL_DATA_QUANTITY 2048
 #define MAX_LAYER_SIZE 2048
 
+#include <cstdint>
+#include <tuple>
 
-// 動作確認してません。とりあえず書いた。
+extern "C" {
 
-// 型一覧。有理数は保留した。
-typedef enum {	
-	Int,
-	Bool, 
-	Float, 
-	Text,
-	Vector,	// これ関数との受け渡し大変だと思う。固定長配列にしない？
-	Video,	// VideoFrameとVideoClipは上位互換側に寄せたい。RGBやRGBAも同様。
-	Audio,	// 多分ここにバッファの概念は入ってきます。データ長め
-}VariableType;
-
-// 色空間とかはソフトウェア全体で統一してた方が良さそうなので一旦書いてない。
-struct Video{
-	int width;
-	int height;
-	int fps;
-	int frame_index;		// バッファのうち現在のフレームの番号
-	int*** frame_buffer;	// フレームが沢山入ったバッファ。最初はバッファサイズ１でやってみよう。
+// 型一覧
+enum class VariableType {
+    Int,
+    Bool,
+    Float,
+    Text,
+    Vector,
+    Video,
+    Audio,
 };
 
-struct Audio{
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+
+// パラメータとして受け渡される型 (int, bool, float はプリミティブ型を使う)
+struct VideoMetaData {
+	std::uint32_t width;
+	std::uint32_t height;
+	double fps;
+    std::uint64_t total_frames;
+};
+
+// 必ずホスト側がallocして渡し，プラグイン側では大きさの操作は不能
+struct VideoFrame {
+    VideoMetaData metadata;
+	std::uint64_t current_frame;
+	std::uint8_t* frame_buffer = nullptr;  // RGBA
+};
+
+struct Audio {
 	//TODO : 考えて書く
 };
 
+
+struct TextParam {
+    int size = 0;
+    char* buf = nullptr;
+};
+
+struct VectorParam {
+    VariableType type;
+    int size = 0;
+    void* value = nullptr;
+};
+
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+
+// 受け渡し時の一時的な入れ物（void*）
+struct Parameter {
+    VariableType type;
+    void* value = nullptr;
+};
+
+struct ParameterPack {
+    int size = 0;
+    Parameter* parameter = nullptr;
+};
+
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+
+// プラグインのメタデータ
+enum class PluginType {
+    Macro,
+    Effect,
+};
+
+struct PluginMetaData {
+    int protocol_version = 1;
+    PluginType type;
+    TextParam uuid;
+    TextParam name;
+};
+
+}
 // 書いてる途中
 struct Project{
 	struct ProjectMeta{
