@@ -110,30 +110,28 @@ extern "C" {
 		union VarUnion var_union;
 	}VarData_t;
 
-	typedef struct GlobalData{
+	typedef struct DataPack{
 		int data_quantity;
 		VarData_t* global_data;
-	}GlobalData_t;
+	}DataPack_t;	// ParameterPackと同じだが、unionを使ったもの。どっちで作っていくかはまた話しましょう。
 
 	typedef struct PluginMeta{
 		int protocol_version;
-		char* plugin_uuid;
-		char* plugin_name;
-		int param_size;
-		VarData_t* params;
+		TextParam_t plugin_uuid;
+		TextParam_t plugin_name;
 	}PluginMeta_t;
 
 	typedef struct EffectClip{
 		PluginMeta_t plugin_meta;
-		int input_size;
-		int output_size;
-		VarData_t* input_variables;		// GlobalDataとの紐づけ (何番目の引数にどのグローバルデータを入れるか)
-		VarData_t* output_variables;	// GlobalDataとの紐づけ (何番目の返り値をどのグローバルデータに入れるか)
+		DataPack_t params;
+		DataPack_t input_variables;		// GlobalDataとの紐づけ (何番目の引数にどのグローバルデータを入れるか)
+		DataPack_t output_variables;	// GlobalDataとの紐づけ (何番目の返り値をどのグローバルデータに入れるか)
 	}EffectClip_t;
 
 	typedef struct MacroClip{
 		PluginMeta_t plugin_meta;
-		// 多分ここにマクロ特有の何かが入ってくる
+		DataPack_t params;
+		int layer_range;	// 影響するレイヤ範囲(基準レイヤから何レイヤか)
 	}MacroClip_t;
 
 	typedef enum {
@@ -160,7 +158,7 @@ extern "C" {
 
 	typedef struct ProjectData{
 		ProjectMeta_t project_meta;
-		GlobalData_t global_data;
+		DataPack_t global_data;
 		TimelineData_t timeline_data;
 	}ProjectData_t;
 
