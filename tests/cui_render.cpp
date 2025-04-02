@@ -6,66 +6,36 @@
 #include <vector>
 #include <plugin/dynamic_library.hpp>
 #include <core/project_data.hpp>
+#include <memory/memory_manager.hpp>
 #include <render/rendering_scheduler.hpp>
 
-// handle -> data
-std::map<int, PluginMetaDataInternal> plugin_metadata_instance;
-std::map<const char*, std::shared_ptr<std::string>> text_instance;
-std::map<int, std::array<std::vector<std::tuple<std::string, VariableType>>, 2>> ParameterTypeInfo;
-
-bool allocate_param(int plugin_handler, bool is_output, VariableType type, const char* name, void* metadata){
-    ParameterTypeInfo[plugin_handler][is_output].push_back({std::string(name), type});
-    return true;
-}
-
-// TODO: ptr -> 実体のshared_ptr のmapを持つことで参照カウント管理をする
-bool assign_text(TextParam* buffer, const char* text){
-    auto text_buffer = std::make_shared<std::string>(text);
-    // TODO: ここではなく，そのさらに根本の参照先を key にするべきな気がする (要修正)
-    text_instance[text_buffer->c_str()] = text_buffer;
-
-    buffer->size = static_cast<int>(text_buffer->size());
-    buffer->buffer = text_buffer->c_str();
-    return true;
-}
-
-bool add_required_handler(int plugin_handler, const char* effect_name){
-    // TODO: implement
-    return true;
-}
-
-bool add_handleable_effect(int plugin_handler, const char* effect_name){
-    // TODO: implement
-    return true;
-}
-
-bool load_video_buffer(VideoFrame* target, std::uint64_t size){
-    // TODO: implement
-    return true;
-}
-
-// TODO: ptr -> 実体のshared_ptr のmapを持つことで参照カウント管理をする
-bool allocate_vector(VectorParam* buffer, VariableType type, const char* text){
-    // TODO: implement
-    return true;
-}
 
 int main(){
+    HandleManager handle_manager;
+    DllMemoryManager dll_memory_manager;
+
+    auto plugin_file_list = DynamicLibrary::list_plugin();
+    std::cout << " -------- Plugin List --------" << std::endl;
+    for(auto&& s : plugin_file_list)
+        std::cout << s << std::endl;
+    std::cout << " -----------------------------" << std::endl;
+
     try{
-        int handler = HandleManager::freshHandler();
-        DynamicLibrary lib("debug_twice_plugin.dll");
-        auto& plugin_metadata = plugin_metadata_instance[handler];
+        int handler = handle_manager.freshHandler();
+        DynamicLibrary lib(plugin_file_list[0]);
+        auto& plugin_metadata = dll_memory_manager.plugin_metadata_instance[handler];
         PluginMetaData plugin_metadata_dll;
 
         // メタ情報を取得
-        reinterpret_cast<bool(*)(int, PluginMetaData*, void*, void*, void*, void*, void*)>(lib["getMetaInfo"])(
+        reinterpret_cast<bool(*)(void*, int, PluginMetaData*, void*, void*, void*, void*, void*)>(lib["getMetaInfo"])(
+            reinterpret_cast<void*>(&dll_memory_manager),
             handler,
             &plugin_metadata_dll,
-            reinterpret_cast<void*>(allocate_param),
-            reinterpret_cast<void*>(assign_text),
-            reinterpret_cast<void*>(allocate_vector),
-            reinterpret_cast<void*>(add_required_handler),
-            reinterpret_cast<void*>(add_handleable_effect)
+            reinterpret_cast<void*>(&DllMemoryManager::allocate_param_static),
+            reinterpret_cast<void*>(&DllMemoryManager::assign_text_static),
+            reinterpret_cast<void*>(&DllMemoryManager::allocate_vector_static),
+            reinterpret_cast<void*>(&DllMemoryManager::add_required_handler_static),
+            reinterpret_cast<void*>(&DllMemoryManager::add_handleable_effect_static)
         );
 
         plugin_metadata.name = std::string(plugin_metadata_dll.name.buffer);
@@ -94,24 +64,26 @@ int main(){
 
         // レンダリング準備
         VideoMetaData clip_meta_data;
-        reinterpret_cast<bool(*)(VideoMetaData*, ParameterPack*, void*, void*, void*)>(lib["onStartRendering"])(
+        reinterpret_cast<bool(*)(void*, VideoMetaData*, ParameterPack*, void*, void*, void*)>(lib["onStartRendering"])(
+            reinterpret_cast<void*>(&dll_memory_manager),
             &clip_meta_data,
             &input_params,
-            reinterpret_cast<void*>(load_video_buffer),
-            reinterpret_cast<void*>(assign_text),
-            reinterpret_cast<void*>(allocate_vector)
+            reinterpret_cast<void*>(&DllMemoryManager::load_video_buffer_static),
+            reinterpret_cast<void*>(&DllMemoryManager::assign_text_static),
+            reinterpret_cast<void*>(&DllMemoryManager::allocate_vector_static)
         );
 
         // レンダリング
         // 実際にはループを回す
         int frame = 7;
-        bool ok = reinterpret_cast<bool(*)(ParameterPack*, ParameterPack*, const VideoMetaData, int, void*, void*)>(lib["renderFrame"])(
+        bool ok = reinterpret_cast<bool(*)(void*, ParameterPack*, ParameterPack*, const VideoMetaData, int, void*, void*)>(lib["renderFrame"])(
+            reinterpret_cast<void*>(&dll_memory_manager),
             &input_params,
             &output_params,
             clip_meta_data,
             frame,
-            reinterpret_cast<void*>(load_video_buffer),
-            reinterpret_cast<void*>(assign_text)
+            reinterpret_cast<void*>(&DllMemoryManager::load_video_buffer_static),
+            reinterpret_cast<void*>(&DllMemoryManager::assign_text_static)
         );
         std::cout << ok << std::endl;
         std::cout << b << std::endl;

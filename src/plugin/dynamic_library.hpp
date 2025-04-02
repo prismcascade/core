@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
 class DynamicLibrary {
 public:
@@ -11,7 +12,8 @@ public:
     // resolve symbol name
     void* operator[] (const std::string& symbolName);
 
+    static std::vector<std::string> list_plugin();
+
 private:
     std::shared_ptr<void> handle_;  // Windows: HMODULE, Linux: void*
-    bool load(const std::string& path);
 };

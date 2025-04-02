@@ -7,11 +7,14 @@
 
 class HandleManager {
 public:
-    static std::string freshID(){
-        return std::format("{:012d}", current_id++);
+    std::string freshID(){
+        char buffer[15]{};
+        sprintf_s(buffer, 14, "%012ld", current_id++);
+        return {buffer};
+        // return std::format("{:012d}", current_id++);  // C++20
     }
 
-    static int freshHandler(){
+    int freshHandler(){
         return current_id++;
     }
 
@@ -20,5 +23,5 @@ public:
     // }
 
 private:
-    static long current_id;
+    long current_id;
 };
