@@ -1,22 +1,12 @@
 #pragma once
 
-#define PARAM_BYTES 2048
-#define PLUGIN_NAME_BYTES 256
-#define PLUGIN_QUANTITY 256
-#define VAR_NAME_BYTES 256
-#define VAR_QUANTITY 256
-#define GLOBAL_DATA_NAME_BYTES 256
-#define GLOBAL_DATA_BYTES 2048
-#define GLOBAL_DATA_QUANTITY 2048
-#define MAX_LAYER_SIZE 2048
-
 #include <cstdint>
 #include <tuple>
 
 extern "C" {
 
 // 型一覧
-enum class VariableType {
+typedef enum{
     Int,
     Bool,
     Float,
@@ -24,7 +14,7 @@ enum class VariableType {
     Vector,
     Video,
     Audio,
-};
+} VariableType_t;
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
@@ -43,24 +33,25 @@ struct VideoFrame {
 	std::uint8_t* frame_buffer = nullptr;  // RGBA
 };
 
-struct Audio {
-};
+typedef struct AudioParam {
+}AudioParam_t;
 
-struct TextParam {
+typedef struct TextParam {
     int size = 0;
     const char* buffer = nullptr;
-};
-struct VectorParam {
-    VariableType type;
+}TextParam_t;
+
+typedef struct VectorParam {
+    VariableType_t type;
     int size = 0;
     void* value = nullptr;
-};
+}VectorParam_t;
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 // 受け渡し時の一時的な入れ物
 struct Parameter {
-    VariableType type;
+    VariableType_t type;
     void* value = nullptr;
 };
 
@@ -93,72 +84,99 @@ struct PluginMetaDataInternal {
     std::string name;
 };
 
-/*
-// 書いてる途中
-struct Project{
-	struct ProjectMeta{
+
+// --この下残しといて----------------------------------------
+
+extern "C" {
+	typedef struct ProjectMeta{
 		int image_frame_rate;
 		int audio_frame_rate;
-		struct MovieSize{
-			int horizontal;
-			int vertical;
+		int screen_horizontal;
+		int screen_vertical;
+	}ProjectMeta_t;
+
+	typedef struct VarData{
+		VariableType_t var_type;
+		char var_name;
+		union VarUnion{
+			int int_param;
+			bool bool_param;
+			float float_param;
+			TextParam_t text_param;
+			VectorParam_t vector_param;
+			VectorParam_t video_param;
+			AudioParam_t audio_param;
 		};
-		Project::ProjectMeta::MovieSize movie_size;
-	};
-	struct GlobalData{
-		char global_data_names[GLOBAL_DATA_QUANTITY][GLOBAL_DATA_NAME_BYTES];
-		VariableType global_data_types[GLOBAL_DATA_QUANTITY];
-		char global_data[GLOBAL_DATA_QUANTITY][GLOBAL_DATA_BYTES];
-	};
-	Project::GlobalData global_data;
-	struct Meta{
-		int layer;
-		struct Frame{
-			int start;
-			int end;
-		};
-		Project::Meta::Frame frame;
-	};
-	
+		union VarUnion var_union;
+	}VarData_t;
+
+	typedef struct DataPack{
+		int data_quantity;
+		VarData_t* global_data;
+	}DataPack_t;	// ParameterPackと同じだが、unionを使ったもの。どっちで作っていくかはまた話しましょう。
+
+	typedef struct PluginMeta{
+		int protocol_version;
+		TextParam_t plugin_uuid;
+		TextParam_t plugin_name;
+	}PluginMeta_t;
+
+	typedef struct EffectClip{
+		PluginMeta_t plugin_meta;
+		DataPack_t params;
+		DataPack_t input_variables;		// GlobalDataとの紐づけ (何番目の引数にどのグローバルデータを入れるか)
+		DataPack_t output_variables;	// GlobalDataとの紐づけ (何番目の返り値をどのグローバルデータに入れるか)
+	}EffectClip_t;
+
+	typedef struct MacroClip{
+		PluginMeta_t plugin_meta;
+		DataPack_t params;
+		int layer_range;	// 影響するレイヤ範囲(基準レイヤから何レイヤか)
+	}MacroClip_t;
+
 	typedef enum {
-		MacroType,
-		FunctionType
-	}LayerType;
-	struct Layer {
-		LayerType type;
-		union {
-			Macro* macroData;
-			Function* functionData;
+		Macro,
+		Effect
+	}ClipType_t;
+
+	typedef struct Clip {
+		ClipType_t clip_type;
+		int layer;
+		int frame_start;
+		int frame_end;
+		union ClipUnion{
+			EffectClip_t macro_clip;
+			MacroClip_t effect_clip;
 		};
-	};
+		union ClipUnion clip_union;
+	}Clip_t;
 
-	struct Function;
-	struct Macro;
+	typedef struct TimelineData{
+		int clip_quantity;
+		Clip_t* clip;
+	}TimelineData_t;
 
-	struct Function{
-		Project::Meta meta_data;
-		Project::GlobalData global_data;
-		struct PluginData{
-			char plugin_name[PLUGIN_NAME_BYTES];
-			char params[PLUGIN_QUANTITY][PARAM_BYTES];
-			char input_variables[VAR_QUANTITY][VAR_NAME_BYTES];
-			char output_variables[VAR_QUANTITY][VAR_NAME_BYTES];
-		};
-		Project::Function::PluginData plugin_data;
-	};
+	typedef struct ProjectData{
+		ProjectMeta_t project_meta;
+		DataPack_t global_data;
+		TimelineData_t timeline_data;
+	}ProjectData_t;
 
-	struct Macro{
-		Project::Meta meta_data;
-		Project::GlobalData global_data;
-		struct MacroData{
-			char input_variables[VAR_QUANTITY][VAR_NAME_BYTES];
-			char output_variables[VAR_QUANTITY][VAR_NAME_BYTES];
-		};
-		Project::Macro::MacroData macro_data;
-		Project::Layer layers[MAX_LAYER_SIZE];
-	};
+	ProjectData_t project_data;
 
-	Layer layers[MAX_LAYER_SIZE];
-};
-Project project;
-*/
+	// project_dataにclipを追加する関数
+	bool AddClip(Clip_t clip);
+
+	// project_dataからclipを削除する関数
+	bool DeleteClip(Clip_t* clip);
+
+	// project_dataのclipを分割する関数
+	bool CutClip(Clip_t* clip, int cut_frame);
+
+	// project_dataのclipを移動する関数
+	bool MoveClip(Clip_t* clip, int frame_start, int layer);
+
+	//  project_dataのclipを伸縮する関数
+	bool FlexClip(Clip_t* clip, int frame_start, int frame_end);
+}
+
