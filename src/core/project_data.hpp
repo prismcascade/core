@@ -2,11 +2,12 @@
 
 #include <cstdint>
 #include <tuple>
+#include <string>
 
 extern "C" {
 
 // 型一覧
-typedef enum{
+enum class VariableType {
     Int,
     Bool,
     Float,
@@ -14,7 +15,7 @@ typedef enum{
     Vector,
     Video,
     Audio,
-} VariableType_t;
+};
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
@@ -42,7 +43,7 @@ typedef struct TextParam {
 }TextParam_t;
 
 typedef struct VectorParam {
-    VariableType_t type;
+    VariableType type;
     int size = 0;
     void* value = nullptr;
 }VectorParam_t;
@@ -51,7 +52,7 @@ typedef struct VectorParam {
 
 // 受け渡し時の一時的な入れ物
 struct Parameter {
-    VariableType_t type;
+    VariableType type;
     void* value = nullptr;
 };
 
@@ -96,7 +97,7 @@ extern "C" {
 	}ProjectMeta_t;
 
 	typedef struct VarData{
-		VariableType_t var_type;
+		VariableType var_type;
 		char var_name;
 		union VarUnion{
 			int int_param;
