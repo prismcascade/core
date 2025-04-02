@@ -2,6 +2,8 @@
 
 #include "project_data.hpp"
 
+namespace PrismCascade {
+
 /*
 class ProjectLoader {
 public:
@@ -14,3 +16,6 @@ private:
     // TODO: parse, validate, etc...
 };
 */
+
+}
+

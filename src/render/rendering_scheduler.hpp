@@ -5,11 +5,13 @@
 #include <optional>
 #include <set>
 
+namespace PrismCascade {
+
 class HandleManager {
 public:
     std::string freshID(){
         char buffer[15]{};
-        snprintf(buffer, std::size(buffer), "%012lld", current_id++);
+        snprintf(buffer, std::size(buffer), "%012ld", static_cast<long>(current_id++));
         return {buffer};
         // return std::format("{:012d}", current_id++);  // C++20
     }
@@ -23,5 +25,7 @@ public:
     // }
 
 private:
-    std::int64_t current_id;
+    std::int64_t current_id{};
 };
+
+}

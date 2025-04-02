@@ -4,6 +4,8 @@
 #include <tuple>
 #include <string>
 
+namespace PrismCascade {
+
 extern "C" {
 
 // 型一覧 (Float の中身は doubleなので注意)
@@ -81,6 +83,9 @@ struct PluginMetaData {
 };
 
 }
+
+std::string to_string(VariableType variable_type);
+std::string to_string(PluginType variable_type);
 
 struct PluginMetaDataInternal {
     int protocol_version = 1;
@@ -186,3 +191,4 @@ extern "C" {
 	bool FlexClip(Clip_t* clip, int frame_start, int frame_end);
 }
 
+}

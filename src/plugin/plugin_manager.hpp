@@ -3,6 +3,8 @@
 #include <string>
 #include <map>
 
+namespace PrismCascade {
+
 /*
 class PluginManager {
 public:
@@ -20,3 +22,5 @@ private:
     std::map<std::string, EffectHandler*> effectRegistry;
 };
 */
+
+}

@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+namespace PrismCascade {
+
 class DynamicLibrary {
 public:
     DynamicLibrary() = delete;  // デフォルト構築禁止
@@ -17,3 +19,5 @@ public:
 private:
     std::shared_ptr<void> handle_;  // Windows: HMODULE, Linux: void*
 };
+
+}

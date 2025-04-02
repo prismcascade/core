@@ -14,6 +14,8 @@
     #include <dlfcn.h>
 #endif
 
+namespace PrismCascade {
+
 DynamicLibrary::DynamicLibrary(const std::string& path){
     void* handle = nullptr;
 #ifdef _IS_WINDOWS_BUILD
@@ -94,4 +96,6 @@ std::vector<std::string> DynamicLibrary::list_plugin(){
         }
     }
     return result;
+}
+
 }

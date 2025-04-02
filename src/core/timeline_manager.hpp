@@ -1,5 +1,7 @@
 #pragma once
 
+namespace PrismCascade {
+
 /*
 class TimelineManager {
 public:
@@ -11,3 +13,5 @@ private:
     PluginManager& pluginMgr;
 };
 */
+
+}

@@ -25,11 +25,11 @@ EXPORT bool API_CALL getMetaInfo(
     PluginMetaData* metadata,
     bool(*allocate_param)(void* host_handler, std::int64_t plugin_handler, bool is_output, VariableType type, const char* name),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
-    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, VariableType type, const char* text),
     bool(*add_required_handler)(void* host_handler, std::int64_t plugin_handler, const char* effect_name),
     bool(*add_handleable_effect)(void* host_handler, std::int64_t plugin_handler, const char* effect_name)) {
         allocate_param(host_handler, plugin_handler, false, VariableType::Int, "入力");
         allocate_param(host_handler, plugin_handler, true,  VariableType::Int, "出力");
+        allocate_param(host_handler, plugin_handler, true,  VariableType::Vector, "ベクタ出力");
         add_handleable_effect(host_handler, plugin_handler, "twice_effect");
         metadata->protocol_version = 1;
         metadata->type = PluginType::Effect;
@@ -49,15 +49,18 @@ EXPORT void API_CALL onDestroyPlugin() {
 // video が引数に含まれるとき， load_buffer コールバックにそのポインタと要求フレームを送ると，そこのフレームバッファがセットされる。
 // 複数のビデオクリップに関する処理が混ざって流れてくる可能性もあるため，バッファの用意等の副作用は非推奨。
 // 注意点として，allocate するのは出力のみ (入力は直前の出力のメモリを使いまわすため)
+// 出力には allocate 以外の書き込み禁止 (したところで無意味なはず)
 EXPORT bool API_CALL onStartRendering(
     void* host_handler,
     VideoMetaData* estimated_meta_data,
     ParameterPack* input,
+    ParameterPack* output,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
     bool(*allocate_vector)(void* host_handler, VectorParam* buffer, VariableType type, int size),
     bool(*allocate_video)(void* host_handler, VideoFrame* buffer,  VideoMetaData metadata),
     bool(*allocate_audio)(void* host_handler, AudioParam* buffer /* TODO: 必要なパラメータを考える */)) {
+        allocate_vector(host_handler, reinterpret_cast<VectorParam*>(output->parameters[1].value), VariableType::Int, 3);
     // Do Nothing
     return true;
 }
@@ -81,12 +84,23 @@ EXPORT bool API_CALL renderFrame(
         Parameter input_num = input->parameters[0];
         assert(input_num.type == VariableType::Int);
 
-        assert(output->size == 1);
+        assert(output->size == 2);
         Parameter output_num = output->parameters[0];
         assert(output_num.type == VariableType::Int);
+        Parameter output_vec = output->parameters[1];
+        assert(output_vec.type == VariableType::Vector);
 
         // 2倍して返すだけ
-        *reinterpret_cast<int*>(output_num.value) = *reinterpret_cast<int*>(input_num.value) * 2;
+        int input_int = *reinterpret_cast<int*>(input_num.value);
+        *reinterpret_cast<int*>(output_num.value) = input_int * 2;
+
+        VectorParam* output_vec_ptr = reinterpret_cast<VectorParam*>(output_vec.value);
+
+        // 3, 4, 5 倍
+        for(int i=0; i<output_vec_ptr->size; ++i){
+            assert(output_vec_ptr->type == VariableType::Int);
+            reinterpret_cast<int*>(output_vec_ptr->buffer)[i] = input_int * (i + 3);
+        }
     return true;
 }
 

@@ -1,6 +1,7 @@
 #include <memory/memory_manager.hpp>
 #include <cassert>
 
+namespace PrismCascade {
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
@@ -52,7 +53,7 @@
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
-    ParameterPack DllMemoryManager::alloc_parameter(std::int64_t plugin_handler, std::int64_t plugin_instance_handler, bool is_output){
+    ParameterPack DllMemoryManager::allocate_parameter(std::int64_t plugin_handler, std::int64_t plugin_instance_handler, bool is_output){
         ParameterPack params;
         std::vector<std::tuple<std::string, VariableType>>& parameter_type_info = parameter_type_informations[plugin_handler][is_output];
         std::shared_ptr<Parameter> parameter_pack_buffer(new Parameter[parameter_type_info.size()], [](Parameter* ptr){ if(ptr) delete[] ptr; });
@@ -91,7 +92,8 @@
         }
         assert(parameter_buffer_list.size() == parameter_type_info.size());
 
-        parameter_pack_instances[plugin_instance_handler][is_output] = { parameter_pack_buffer, parameter_buffer_list };
+        parameter_pack_instances[plugin_instance_handler].first = plugin_handler;
+        parameter_pack_instances[plugin_instance_handler].second[is_output] = { parameter_pack_buffer, parameter_buffer_list };
         params.size = parameter_type_info.size();
         params.parameters = parameter_pack_buffer.get();
         return params;
@@ -265,3 +267,5 @@
         std::lock_guard<std::mutex> lock{ mutex_ };
         audio_instances.erase(buffer);
     }
+
+}
