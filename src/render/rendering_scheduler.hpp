@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <format>
+// #include <format>
 #include <optional>
 #include <set>
 
@@ -9,7 +9,7 @@ class HandleManager {
 public:
     std::string freshID(){
         char buffer[15]{};
-        sprintf_s(buffer, 14, "%012ld", current_id++);
+        snprintf(buffer, std::size(buffer), "%012ld", current_id++);
         return {buffer};
         // return std::format("{:012d}", current_id++);  // C++20
     }
