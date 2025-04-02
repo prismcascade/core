@@ -16,6 +16,8 @@
 #include <iostream>
 #include <cstdint>
 
+using namespace PrismCascade;
+
 extern "C" {
 
 // input/output のパラメータ一覧と型, requiredEffect, handleableEffect 等を返す
