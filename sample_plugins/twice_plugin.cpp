@@ -14,21 +14,22 @@
 #include "project_data.hpp"
 #include <cassert>
 #include <iostream>
+#include <cstdint>
 
 extern "C" {
 
 // input/output のパラメータ一覧と型, requiredEffect, handleableEffect 等を返す
 EXPORT bool API_CALL getMetaInfo(
     void* host_handler,
-    int plugin_handler,
+    std::int64_t plugin_handler,
     PluginMetaData* metadata,
-    bool(*allocate_param)(void* host_handler, int plugin_handler, bool is_output, VariableType type, const char* name, void* metadata),
+    bool(*allocate_param)(void* host_handler, std::int64_t plugin_handler, bool is_output, VariableType type, const char* name),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
     bool(*allocate_vector)(void* host_handler, VectorParam* buffer, VariableType type, const char* text),
-    bool(*add_required_handler)(void* host_handler, int plugin_handler, const char* effect_name),
-    bool(*add_handleable_effect)(void* host_handler, int plugin_handler, const char* effect_name)) {
-        allocate_param(host_handler, plugin_handler, false, VariableType::Int, "入力", nullptr);
-        allocate_param(host_handler, plugin_handler, true,  VariableType::Int, "出力", nullptr);
+    bool(*add_required_handler)(void* host_handler, std::int64_t plugin_handler, const char* effect_name),
+    bool(*add_handleable_effect)(void* host_handler, std::int64_t plugin_handler, const char* effect_name)) {
+        allocate_param(host_handler, plugin_handler, false, VariableType::Int, "入力");
+        allocate_param(host_handler, plugin_handler, true,  VariableType::Int, "出力");
         add_handleable_effect(host_handler, plugin_handler, "twice_effect");
         metadata->protocol_version = 1;
         metadata->type = PluginType::Effect;
@@ -47,13 +48,16 @@ EXPORT void API_CALL onDestroyPlugin() {
 // レンダリング開始時に1回呼ばれ，出力するビデオクリップの長さ等を出力する （出力が video であるエフェクトのみ）
 // video が引数に含まれるとき， load_buffer コールバックにそのポインタと要求フレームを送ると，そこのフレームバッファがセットされる。
 // 複数のビデオクリップに関する処理が混ざって流れてくる可能性もあるため，バッファの用意等の副作用は非推奨。
+// 注意点として，allocate するのは出力のみ (入力は直前の出力のメモリを使いまわすため)
 EXPORT bool API_CALL onStartRendering(
     void* host_handler,
     VideoMetaData* estimated_meta_data,
     ParameterPack* input,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
-    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, VariableType type, const char* text)) {
+    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, VariableType type, int size),
+    bool(*allocate_video)(void* host_handler, VideoFrame* buffer,  VideoMetaData metadata),
+    bool(*allocate_audio)(void* host_handler, AudioParam* buffer /* TODO: 必要なパラメータを考える */)) {
     // Do Nothing
     return true;
 }

@@ -9,12 +9,12 @@ class HandleManager {
 public:
     std::string freshID(){
         char buffer[15]{};
-        snprintf(buffer, std::size(buffer), "%012ld", current_id++);
+        snprintf(buffer, std::size(buffer), "%012lld", current_id++);
         return {buffer};
         // return std::format("{:012d}", current_id++);  // C++20
     }
 
-    int freshHandler(){
+    std::int64_t freshHandler(){
         return current_id++;
     }
 
@@ -23,5 +23,5 @@ public:
     // }
 
 private:
-    long current_id;
+    std::int64_t current_id;
 };

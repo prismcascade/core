@@ -6,7 +6,7 @@
 
 extern "C" {
 
-// 型一覧
+// 型一覧 (Float の中身は doubleなので注意)
 enum class VariableType {
     Int,
     Bool,
@@ -34,7 +34,11 @@ struct VideoFrame {
 	std::uint8_t* frame_buffer = nullptr;  // RGBA
 };
 
+// TODO: この typedef は無害だし，しばらく残しておくから，コンパイラのバージョンを上げてくれ！！！！！！！！！！！！！
+// マジで。
+
 typedef struct AudioParam {
+	double* buffer = nullptr;
 }AudioParam_t;
 
 typedef struct TextParam {
@@ -45,7 +49,7 @@ typedef struct TextParam {
 typedef struct VectorParam {
     VariableType type;
     int size = 0;
-    void* value = nullptr;
+    void* buffer = nullptr;
 }VectorParam_t;
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
@@ -163,7 +167,8 @@ extern "C" {
 		TimelineData_t timeline_data;
 	}ProjectData_t;
 
-	ProjectData_t project_data;
+	// hpp内で変数定義するとエラー出るからこれだけコメントアウトした
+	// ProjectData_t project_data;
 
 	// project_dataにclipを追加する関数
 	bool AddClip(Clip_t clip);

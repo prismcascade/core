@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# tests/ 内の *.cpp を個別の実行ファイルとしてビルドする例
+# tests/ 内の *.cpp を個別の実行ファイルとしてビルドする
 file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
 foreach(test_source ${TEST_SOURCES})
