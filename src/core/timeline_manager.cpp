@@ -1,8 +1,6 @@
 
 // なんか「そのフレームにおける各レイヤのエフェクト」を返す関数を作った。でも何をビルドすればいいか分からんので、適宜デバッグしといて。
 
-#pragma once
-
 #include <cstdint>
 #include <tuple>
 #include <string>
@@ -13,6 +11,8 @@
 
 #include <core/project_data.hpp>
 #include <core/timeline_manager.hpp>
+
+namespace PrismCascade {
 
 // 全レイヤ、全クリップのリスト
 std::vector<std::vector<Clip_t>> layers;
@@ -35,16 +35,16 @@ std::vector<Clip_t> get_frame_effects(){
 
 // clipを何処かのレイヤに追加する関数
 void add_clip(Clip_t new_clip){
-	if (layers.size() < clip.layer){
-		while(layers.size() < clip.layer){
+	if (layers.size() < new_clip.layer){
+		while(layers.size() < new_clip.layer){
 			std::vector<Clip_t> new_layer = {};
-			new_layer.push_back(clip);
-			layers.append(new_layer);
+			new_layer.push_back(new_clip);
+			layers.push_back(new_layer);
 		}
 	}else{
 		bool flg01 = false;
 		for(int i=0; i<layers[new_clip.layer].size(); i++){
-			if ((layers[i].frame_start <= new_clip.frame_start && new_clip.frame_start <= layers[i].frame_end) || (layers[i].frame_start <= new_clip.frame_end && new_clip.frame_end <= layers[i].frame_end)){
+			if ((layers[new_clip.layer][i].frame_start <= new_clip.frame_start && new_clip.frame_start <= layers[new_clip.layer][i].frame_end) || (layers[new_clip.layer][i].frame_start <= new_clip.frame_end && new_clip.frame_end <= layers[new_clip.layer][i].frame_end)){
 				flg01 = true;
 			}
 		}
@@ -53,3 +53,6 @@ void add_clip(Clip_t new_clip){
 		}
 	}
 }
+
+}
+
