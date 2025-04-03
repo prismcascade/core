@@ -17,8 +17,7 @@ global_data:
     type: "float"
 
 project:
-  - clip:
-    start_frame: 4
+  - start_frame: 4
     end_frame: 16
     plugin_uuid: "00000000-0000-0000-0000-000000000000"
     plugin_name: "Yukkuri Movie Maker Tool"
@@ -53,8 +52,7 @@ project:
   
   # ここから下が、01との変更点
 
-  - clip:
-    start_frame: 4
+  - start_frame: 4
     end_frame: 16
     layer: 0
     plugin_uuid: "00000000-0000-0000-0000-000000000000"
@@ -78,8 +76,7 @@ project:
         var_type: "float"
       - argument_name: "sin_rad"
         var_type: "float"
-  - clip:
-    start_frame: 4
+  - start_frame: 4
     end_frame: 16
     layer: 2
     plugin_uuid: "00000000-0000-0000-0000-000000000000"
