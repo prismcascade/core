@@ -238,8 +238,9 @@ namespace PrismCascade {
         std::lock_guard<std::mutex> lock{ mutex_ };
         assert(vector_instances.count(src));
         assert(src->type == dst->type);
-        vector_instances[dst] = vector_instances[src];
-        dst->buffer = reinterpret_cast<void*>(vector_instances[dst].get());
+        vector_instances[dst] = vector_instances.at(src);
+        dst->size = src->size;
+        dst->buffer = vector_instances[dst].get();
     }
 
     void DllMemoryManager::free_vector(VectorParam* buffer){

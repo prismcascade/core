@@ -74,8 +74,7 @@ PluginManager::~PluginManager(){
 
 void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNode::input_t input_value){
     // uuid が変だったら例外が飛ぶが，そもそも make_node で弾かれるはずなのでアンロードしない限り安全
-    const std::uint64_t plugin_handler = dll_memory_manager.plugin_uuid_to_handler.at(node->plugin_uuid);
-    const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(plugin_handler);
+    const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(node->plugin_handler);
     // 値を運ぶ先が範囲外なら落とす
     if(index < 0 || type_info[0].size() <= index)
         throw std::domain_error("[PluginManager::assign_input] index out of bounds");
@@ -269,6 +268,8 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
             std::shared_ptr<AstNode> sub_function = std::get<std::shared_ptr<AstNode>>(child);
             std::shared_ptr<Parameter> child_output_ptr = dll_memory_manager.parameter_pack_instances.at(sub_function->plugin_instance_handler).second[true].first;
             copy_parameter(input_parameter, child_output_ptr.get()[0]);
+			// ^v どちらでも良い
+            //copy_parameter(node->input_params.parameters[input_index], sub_function->output_params.parameters[0]);
         } else if(std::holds_alternative<AstNode::SubEdge>(child)) {
             // トポロジカルソートされている前提
             AstNode::SubEdge sub_edge = std::get<AstNode::SubEdge>(child);
@@ -299,3 +300,4 @@ void PluginManager::invoke_finish_rendering(std::shared_ptr<AstNode> node){
 }
 
 }
+
