@@ -179,6 +179,7 @@ std::shared_ptr<AstNode> PluginManager::make_node(std::string uuid, std::weak_pt
 
         // 入出力パラメータのDLL受け渡し用領域確保
         std::tie(node->input_params, node->output_params) = dll_memory_manager.allocate_plugin_parameters(plugin_handler, plugin_instance_handler);
+        return node;
     } else
         throw std::runtime_error("[PluginManager::make_node] required plugin is not loaded");
 }
