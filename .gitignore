@@ -36,3 +36,5 @@ build/
 memo.txt
 .vscode/
 dll_build/
+
+*_old_*

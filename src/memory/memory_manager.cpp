@@ -65,56 +65,61 @@ namespace PrismCascade {
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
-    ParameterPack DllMemoryManager::allocate_parameter(std::int64_t plugin_handler, std::int64_t plugin_instance_handler, bool is_output){
-        ParameterPack params;
-        std::vector<std::tuple<std::string, std::vector<VariableType>>>& parameter_type_info = parameter_type_informations[plugin_handler][is_output];
-        std::shared_ptr<Parameter> parameter_pack_buffer(new Parameter[parameter_type_info.size()], [](Parameter* ptr){ if(ptr) delete[] ptr; });
-        std::vector<std::shared_ptr<void>> parameter_buffer_list;
-        for(std::size_t i=0; i < parameter_type_info.size(); ++i) {
-            const auto& [name, type] = parameter_type_info[i];
-            std::shared_ptr<void> parameter_buffer;
-            // NOTE: 現状では vector の入れ子がないので，typeの長さは最大 2
-            switch(type[0]){
-                case VariableType::Int:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<int>());
-                break;
-                case VariableType::Bool:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<bool>());
-                break;
-                case VariableType::Float:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<double>());
-                break;
-                case VariableType::Text:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<TextParam>());
-                break;
-                case VariableType::Vector:
-                    {
-                        auto vector_container = std::make_shared<VectorParam>();
-                        assert(type.size() >= 2);  // これが落ちた場合， allocate_param からの型の受け渡しがおかしい
-                        vector_container->type = type[1];
-                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VectorParam>());
-                    }
-                break;
-                case VariableType::Video:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VideoFrame>());
-                break;
-                case VariableType::Audio:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<AudioParam>());
+    std::pair<ParameterPack, ParameterPack> DllMemoryManager::allocate_plugin_parameters(std::int64_t plugin_handler, std::int64_t plugin_instance_handler){
+        ParameterPack params[2];
+        for(bool is_output : {false, true}){
+            std::vector<std::tuple<std::string, std::vector<VariableType>>>& parameter_type_info = parameter_type_informations[plugin_handler][is_output];
+            std::shared_ptr<Parameter> parameter_pack_buffer(new Parameter[parameter_type_info.size()], [](Parameter* ptr){ if(ptr) delete[] ptr; });
+            std::vector<std::shared_ptr<void>> parameter_buffer_list;
+            for(std::size_t i=0; i < parameter_type_info.size(); ++i) {
+                const auto& [name, type] = parameter_type_info[i];
+                std::shared_ptr<void> parameter_buffer;
+                // NOTE: 現状では vector の入れ子がないので，typeの長さは最大 2
+                switch(type[0]){
+                    case VariableType::Int:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<int>());
                     break;
-                default:
-                    throw std::runtime_error("unknown type");
+                    case VariableType::Bool:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<bool>());
+                    break;
+                    case VariableType::Float:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<double>());
+                    break;
+                    case VariableType::Text:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<TextParam>());
+                    break;
+                    case VariableType::Vector:
+                        {
+                            auto vector_container = std::make_shared<VectorParam>();
+                            vector_container->type = type.at(1);  // これが落ちた場合， allocate_param からの型の受け渡しがおかしい
+                            parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VectorParam>());
+                        }
+                    break;
+                    case VariableType::Video:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VideoFrame>());
+                    break;
+                    case VariableType::Audio:
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<AudioParam>());
+                        break;
+                    default:
+                        throw std::runtime_error("[DllMemoryManager::allocate_plugin_parameters] unknown type");
+                }
+                parameter_pack_buffer.get()[i].type  = type[0];
+                parameter_pack_buffer.get()[i].value = parameter_buffer.get();
+                parameter_buffer_list.emplace_back(std::move(parameter_buffer));
             }
-            parameter_pack_buffer.get()[i].type  = type[0];
-            parameter_pack_buffer.get()[i].value = parameter_buffer.get();
-            parameter_buffer_list.emplace_back(std::move(parameter_buffer));
-        }
-        assert(parameter_buffer_list.size() == parameter_type_info.size());
+            assert(parameter_buffer_list.size() == parameter_type_info.size());
 
-        parameter_pack_instances[plugin_instance_handler].first = plugin_handler;
-        parameter_pack_instances[plugin_instance_handler].second[is_output] = { parameter_pack_buffer, parameter_buffer_list };
-        params.size = static_cast<int>(parameter_type_info.size());
-        params.parameters = parameter_pack_buffer.get();
-        return params;
+            parameter_pack_instances[plugin_instance_handler].first = plugin_handler;
+            parameter_pack_instances[plugin_instance_handler].second[is_output] = { parameter_pack_buffer, parameter_buffer_list };
+            params[is_output].size = static_cast<int>(parameter_type_info.size());
+            params[is_output].parameters = parameter_pack_buffer.get();
+        }
+        return std::make_pair(params[0], params[1]);
+    }
+
+    bool DllMemoryManager::free_plugin_parameters(std::int64_t plugin_instance_handler){
+        return parameter_pack_instances.erase(plugin_instance_handler);
     }
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
@@ -137,6 +142,7 @@ namespace PrismCascade {
         std::lock_guard<std::mutex> lock{ mutex_ };
         assert(text_instances.count(src));
         text_instances[dst] = text_instances[src];
+        dst->buffer = text_instances[dst]->data();
     }
 
     void DllMemoryManager::free_text(TextParam* buffer){
@@ -167,7 +173,7 @@ namespace PrismCascade {
                     return false;
             return true;
         }(buffer->type))
-            throw std::runtime_error("unexpected type in vector");
+            throw std::runtime_error("[DllMemoryManager::allocate_vector] unexpected type in vector");
         // 確保
         switch(buffer->type){
             case VariableType::Int:
@@ -191,7 +197,7 @@ namespace PrismCascade {
             break;
             case VariableType::Vector:
                 // 将来的には対応するかも
-                throw std::runtime_error("vectors of vectors cannot be created (for now)");
+                throw std::runtime_error("[DllMemoryManager::allocate_vector] vectors of vectors cannot be created (for now)");
             break;
             case VariableType::Video:
                 vector_buffer = std::shared_ptr<void>(reinterpret_cast<void*>(new VideoFrame[size]), [this, size](void* ptr){
@@ -214,7 +220,7 @@ namespace PrismCascade {
                 });
                 break;
             default:
-                throw std::runtime_error("unknown type");
+                throw std::runtime_error("[DllMemoryManager::allocate_vector] unknown type");
         }
 
         vector_instances[buffer] = vector_buffer;
@@ -231,7 +237,9 @@ namespace PrismCascade {
     void DllMemoryManager::copy_vector(VectorParam* dst, VectorParam* src){
         std::lock_guard<std::mutex> lock{ mutex_ };
         assert(vector_instances.count(src));
+        assert(src->type == dst->type);
         vector_instances[dst] = vector_instances[src];
+        dst->buffer = reinterpret_cast<void*>(vector_instances[dst].get());
     }
 
     void DllMemoryManager::free_vector(VectorParam* buffer){
@@ -261,6 +269,7 @@ namespace PrismCascade {
         std::lock_guard<std::mutex> lock{ mutex_ };
         assert(video_instances.count(src));
         video_instances[dst] = video_instances[src];
+        dst->frame_buffer = reinterpret_cast<std::uint8_t*>(video_instances[dst].get());
     }
 
     void DllMemoryManager::free_video(VideoFrame* buffer){
@@ -288,6 +297,7 @@ namespace PrismCascade {
         std::lock_guard<std::mutex> lock{ mutex_ };
         assert(audio_instances.count(src));
         audio_instances[dst] = audio_instances[src];
+        dst->buffer = reinterpret_cast<double*>(audio_instances[dst].get());
     }
 
     void DllMemoryManager::free_audio(AudioParam* buffer){

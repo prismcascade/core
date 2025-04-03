@@ -3,6 +3,10 @@
 #include <cstdint>
 #include <tuple>
 #include <string>
+#include <variant>
+#include <memory>
+#include <optional>
+#include <vector>
 
 namespace PrismCascade {
 
@@ -23,42 +27,45 @@ enum class VariableType {
 
 // パラメータとして受け渡される型 (int, bool, float はプリミティブ型を使う)
 struct VideoMetaData {
-	std::uint32_t width;
-	std::uint32_t height;
-	double fps;
-    std::uint64_t total_frames;
+	std::uint32_t width = 0;
+	std::uint32_t height = 0;
+	double fps = 0;
+    std::uint64_t total_frames = 0;
 };
 
 // 必ずホスト側がallocして渡し，プラグイン側では大きさの操作は不能
 struct VideoFrame {
     VideoMetaData metadata;
-	std::uint64_t current_frame;
+	std::uint64_t current_frame = 0;
 	std::uint8_t* frame_buffer = nullptr;  // RGBA
 };
 
-// TODO: この typedef は無害だし，しばらく残しておくから，コンパイラのバージョンを上げてくれ！！！！！！！！！！！！！
-// マジで。
+struct AudioMetaData {
+	// TODO: 必要なメンバ変数を適宜考える
+	std::uint64_t total_samples = 0;
+};
 
-typedef struct AudioParam {
+struct AudioParam {
+	// TODO: 必要なメンバ変数を適宜考える
 	double* buffer = nullptr;
-}AudioParam_t;
+};
 
-typedef struct TextParam {
+struct TextParam {
     int size = 0;
     const char* buffer = nullptr;
-}TextParam_t;
+};
 
-typedef struct VectorParam {
-    VariableType type;
+struct VectorParam {
+    VariableType type{};
     int size = 0;
     void* buffer = nullptr;
-}VectorParam_t;
+};
 
 // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 // 受け渡し時の一時的な入れ物
 struct Parameter {
-    VariableType type;
+    VariableType type{};
     void* value = nullptr;
 };
 
@@ -94,6 +101,57 @@ struct PluginMetaDataInternal {
     std::string name;
 };
 
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+
+// AST
+struct AstNode {
+	struct SubEdge {
+		std::weak_ptr<AstNode> from_node;
+		int index = 0;
+	};
+	using input_t = std::variant<std::shared_ptr<AstNode>, SubEdge, int, bool, double, VectorParam, VideoFrame, AudioParam, std::string>;
+
+	// handler は実行ごとに変化する，勝手につけた通し番号
+	std::uint64_t plugin_handler{};
+	std::uint64_t plugin_instance_handler{};
+	// uuidは，プラグイン側で決められる識別ID
+	std::string plugin_uuid{};
+
+	// メタデータからも辿れるが，処理の途中で途中で変化しない値なので，扱いやすさのためにもコピーをここに置く
+	int protocol_version{};
+	PluginType plugin_type{};
+	std::string plugin_name{};
+
+	// パラメータ入力一覧
+	// TODO: 将来バージョンでは vector をプリミティブ入力として許す
+	std::vector<input_t> children;
+
+	// 主出力先
+	std::weak_ptr<AstNode> parent;
+
+	// 削除時にdead_input を検査するための，仮親ノード一覧
+	std::vector<std::weak_ptr<AstNode>> sub_output_destination;
+
+
+	// これ自体が video clip や audio clip としてふるまう場合，そのメタデータが入る
+	std::optional<VideoMetaData> video_clip_meta_data;
+	std::optional<AudioMetaData> audio_clip_meta_data;
+
+	// TODO: macro を実装したら使えるようになる予定のメンバ変数
+	// [depth, ast_node]
+	// 外側のコンテナが vector で良いのかは要検討
+	std::vector<std::pair<int, std::shared_ptr<AstNode>>> generated_child_ast;
+
+	// DLL側のメモリ
+	ParameterPack input_params{};
+	ParameterPack output_params{};
+
+	bool type_check(){ return true; }  // TODO: 子についても再帰的にチェックする
+	bool check_dead_input(){ return false; }  // TODO: 子についても再帰的にチェックする
+
+	static input_t make_empty_value(const std::vector<VariableType>& types);
+};
+
 
 // --この下残しといて----------------------------------------
 
@@ -112,10 +170,10 @@ extern "C" {
 			int int_param;
 			bool bool_param;
 			float float_param;
-			TextParam_t text_param;
-			VectorParam_t vector_param;
-			VectorParam_t video_param;
-			AudioParam_t audio_param;
+			TextParam text_param;
+			VectorParam vector_param;
+			VectorParam video_param;
+			AudioParam audio_param;
 		};
 		union VarUnion var_union;
 	}VarData_t;
@@ -127,8 +185,8 @@ extern "C" {
 
 	typedef struct PluginMeta{
 		int protocol_version;
-		TextParam_t plugin_uuid;
-		TextParam_t plugin_name;
+		TextParam plugin_uuid;
+		TextParam plugin_name;
 	}PluginMeta_t;
 
 	typedef struct EffectClip{

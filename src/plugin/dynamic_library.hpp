@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <optional>
 
 namespace PrismCascade {
 
@@ -14,7 +15,7 @@ public:
     // resolve symbol name
     void* operator[] (const std::string& symbolName);
 
-    static std::vector<std::string> list_plugin();
+    static std::vector<std::string> list_plugin(const std::optional<std::string>& path);
 
 private:
     std::shared_ptr<void> handle_;  // Windows: HMODULE, Linux: void*

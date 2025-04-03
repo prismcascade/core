@@ -19,9 +19,11 @@ struct DllMemoryManager {
     std::map<VideoFrame*, std::shared_ptr<std::vector<std::uint8_t>>> video_instances;
     std::map<AudioParam*, std::shared_ptr<std::vector<double>>> audio_instances;  // TODO: 型は後から考える
     // plugin_handler -> type_info
+    std::map<std::string, std::int64_t> plugin_uuid_to_handler;
     std::map<std::int64_t, PluginMetaDataInternal> plugin_metadata_instances;
+    // vector<VariableType> の長さは 1 か 2 (1つ目がVectorの場合)
     std::map<std::int64_t, std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>> parameter_type_informations;
-    // plugin_*instance*_handler -> plugin_handler, [(parameter_adapter, [parameter_buffer])]
+    // plugin_*instance*_handler -> plugin_handler, 2[(parameter_adapter, [parameter_buffer])]
     std::map<std::int64_t, std::pair<std::int64_t, std::array<std::pair<std::shared_ptr<Parameter>, std::vector<std::shared_ptr<void>>>, 2>>> parameter_pack_instances;
 
     bool allocate_param(std::int64_t plugin_handler, bool is_output, VariableType type, const char* name, std::optional<VariableType> type_inner);
@@ -36,7 +38,10 @@ struct DllMemoryManager {
     bool load_video_buffer(VideoFrame* target, std::uint64_t frame);
     static bool load_video_buffer_static(void* ptr, VideoFrame* target, std::uint64_t frame);
 
-    ParameterPack allocate_parameter(std::int64_t plugin_handler, std::int64_t plugin_instance_handler, bool is_output);
+    // input, output の pair
+    std::pair<ParameterPack, ParameterPack> allocate_plugin_parameters(std::int64_t plugin_handler, std::int64_t plugin_instance_handler);
+    // 削除された場合 true, 無かった場合 false
+    bool free_plugin_parameters(std::int64_t plugin_instance_handler);
 
     // -------- 受け渡し用コンテナのメモリ解放責任は，ホスト側の (.+)Param を持っている存在が負う -------- //
 

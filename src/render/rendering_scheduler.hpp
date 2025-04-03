@@ -4,28 +4,17 @@
 // #include <format>
 #include <optional>
 #include <set>
+#include <mutex>
+#include <atomic>
+#include <core/project_data.hpp>
 
 namespace PrismCascade {
 
-class HandleManager {
+class RenderingScheduler {
 public:
-    std::string freshID(){
-        char buffer[15]{};
-        snprintf(buffer, std::size(buffer), "%012ld", static_cast<long>(current_id++));
-        return {buffer};
-        // return std::format("{:012d}", current_id++);  // C++20
-    }
-
-    std::int64_t freshHandler(){
-        return current_id++;
-    }
-
-    // std::optional<Image> operator[](std::string id){
-    //     return {};
-    // }
-
+    std::shared_ptr<AstNode> ast;
 private:
-    std::int64_t current_id{};
+
 };
 
 }

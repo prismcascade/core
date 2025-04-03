@@ -1,4 +1,5 @@
 #include <core/project_data.hpp>
+#include <stdexcept>
 
 namespace PrismCascade {
 
@@ -32,6 +33,47 @@ std::string to_string(PluginType variable_type){
 		default:
 			return "(unknown type)";
 	}
+}
+
+AstNode::input_t AstNode::make_empty_value(const std::vector<VariableType>& types){
+	input_t empty_value{};
+	switch(types.at(0)){
+		case VariableType::Int:
+			empty_value.emplace<int>();
+		break;
+		case VariableType::Bool:
+			empty_value.emplace<bool>();
+		break;
+		case VariableType::Float:
+			empty_value.emplace<double>();
+		break;
+		case VariableType::Text:
+			empty_value.emplace<std::string>();
+		break;
+		case VariableType::Vector:
+			{
+				VectorParam vector_param{};
+				VariableType type_inner = types.at(1);
+				vector_param.type = type_inner;
+				empty_value.emplace<VectorParam>(vector_param);
+			}
+		break;
+		case VariableType::Video:
+		{
+			VideoFrame video_frame{};
+			empty_value.emplace<VideoFrame>(video_frame);
+		}
+		break;
+		case VariableType::Audio:
+		{
+			AudioParam audio_param{};
+			empty_value.emplace<AudioParam>(audio_param);
+		}
+		break;
+		default:
+			throw std::domain_error("[AstNode::make_empty_value] unknown type");
+	}
+	return empty_value;
 }
 
 // ---------------- //

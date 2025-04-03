@@ -41,20 +41,23 @@ EXPORT bool API_CALL getMetaInfo(
 }
 
 EXPORT bool API_CALL onLoadPlugin() {
+    std::cerr << "plugin loaded" << std::endl;
     return true;
 }
 
 EXPORT void API_CALL onDestroyPlugin() {
+    std::cerr << "plugin destroyed" << std::endl;
 }
 
-// レンダリング開始時に1回呼ばれ，出力するビデオクリップの長さ等を出力する （出力が video であるエフェクトのみ）
+// レンダリング開始時に1回呼ばれ，出力するビデオ/オーディオクリップやの長さ等を出力する （メイン出力が video であるエフェクトのみ）
 // video が引数に含まれるとき， load_buffer コールバックにそのポインタと要求フレームを送ると，そこのフレームバッファがセットされる。
 // 複数のビデオクリップに関する処理が混ざって流れてくる可能性もあるため，バッファの用意等の副作用は非推奨。
 // 注意点として，allocate するのは出力のみ (入力は直前の出力のメモリを使いまわすため)
 // 出力には allocate 以外の書き込み禁止 (したところで無意味なはず)
 EXPORT bool API_CALL onStartRendering(
     void* host_handler,
-    VideoMetaData* estimated_meta_data,
+    VideoMetaData* estimated_video_meta_data,
+    AudioMetaData* estimated_audio_meta_data,
     ParameterPack* input,
     ParameterPack* output,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
@@ -77,7 +80,8 @@ EXPORT bool API_CALL renderFrame(
     void* host_handler,
     ParameterPack* input,
     ParameterPack* output,
-    const VideoMetaData estimated_meta_data,
+    const VideoMetaData estimated_video_meta_data,
+    const AudioMetaData estimated_audio_meta_data,
     int frame,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text)) {
