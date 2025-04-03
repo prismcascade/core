@@ -186,7 +186,6 @@ std::shared_ptr<AstNode> PluginManager::make_node(std::string uuid, std::weak_pt
 
 bool PluginManager::invoke_start_rendering(std::shared_ptr<AstNode> node){
     auto lib = dynamic_libraries.at(node->plugin_handler);
-    reinterpret_cast<void(*)()>(lib["onStartRendering"])();
     // レンダリング開始イベント発火 & アロケーション
     VideoMetaData video_clip_meta_data;
     AudioMetaData audio_clip_meta_data;

@@ -28,7 +28,7 @@ int main(){
     plugin_manager.assign_input(root, 0, 25);
 
     // 準備
-    plugin_manager.invoke_finish_rendering(root);
+    plugin_manager.invoke_start_rendering(root);
     // 呼ぶ
     bool ok = plugin_manager.invoke_render_frame(root, 7);
     // 出力を見る
