@@ -189,7 +189,7 @@ bool PluginManager::invoke_start_rendering(std::shared_ptr<AstNode> node){
     // レンダリング開始イベント発火 & アロケーション
     VideoMetaData video_clip_meta_data;
     AudioMetaData audio_clip_meta_data;
-    reinterpret_cast<bool(*)(void*, VideoMetaData*, AudioMetaData*, ParameterPack*, ParameterPack*, void*, void*, void*, void*, void*)>(lib["onStartRendering"])(
+    bool ok = reinterpret_cast<bool(*)(void*, VideoMetaData*, AudioMetaData*, ParameterPack*, ParameterPack*, void*, void*, void*, void*, void*)>(lib["onStartRendering"])(
         reinterpret_cast<void*>(&dll_memory_manager),
         &video_clip_meta_data,
         &audio_clip_meta_data,
@@ -201,6 +201,7 @@ bool PluginManager::invoke_start_rendering(std::shared_ptr<AstNode> node){
         reinterpret_cast<void*>(&DllMemoryManager::allocate_video_static),
         reinterpret_cast<void*>(&DllMemoryManager::allocate_audio_static)
     );
+    return ok;
 }
 
 bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame){
