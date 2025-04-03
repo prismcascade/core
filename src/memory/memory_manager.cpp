@@ -1,18 +1,30 @@
 #include <memory/memory_manager.hpp>
 #include <cassert>
+#include <stdexcept>
+#include <stdarg.h>
 
 namespace PrismCascade {
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
-    bool DllMemoryManager::allocate_param(std::int64_t plugin_handler, bool is_output, VariableType type, const char* name){
+    bool DllMemoryManager::allocate_param(std::int64_t plugin_handler, bool is_output, VariableType type, const char* name, std::optional<VariableType> type_inner){
         std::lock_guard<std::mutex> lock{ mutex_ };
-        parameter_type_informations[plugin_handler][is_output].push_back({std::string(name), type});
+        if(type_inner)
+            parameter_type_informations[plugin_handler][is_output].push_back({std::string(name), {type, *type_inner}});
+        else
+            parameter_type_informations[plugin_handler][is_output].push_back({std::string(name), {type}});
         return true;
     }
 
-    bool DllMemoryManager::allocate_param_static(void* ptr, std::int64_t plugin_handler, bool is_output, VariableType type, const char* name){
-        return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_param(plugin_handler, is_output, type, name);
+    bool DllMemoryManager::allocate_param_static(void* ptr, std::int64_t plugin_handler, bool is_output, VariableType type, const char* name, ...){
+        if(type == VariableType::Vector){
+            // Cスタイルの可変長引数として取得
+            va_list ap;
+            va_start(ap, name);
+            VariableType type_inner = va_arg(ap, VariableType);
+            return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_param(plugin_handler, is_output, type, name, type_inner);
+        } else
+            return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_param(plugin_handler, is_output, type, name, std::nullopt);
     }
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
@@ -55,13 +67,14 @@ namespace PrismCascade {
 
     ParameterPack DllMemoryManager::allocate_parameter(std::int64_t plugin_handler, std::int64_t plugin_instance_handler, bool is_output){
         ParameterPack params;
-        std::vector<std::tuple<std::string, VariableType>>& parameter_type_info = parameter_type_informations[plugin_handler][is_output];
+        std::vector<std::tuple<std::string, std::vector<VariableType>>>& parameter_type_info = parameter_type_informations[plugin_handler][is_output];
         std::shared_ptr<Parameter> parameter_pack_buffer(new Parameter[parameter_type_info.size()], [](Parameter* ptr){ if(ptr) delete[] ptr; });
         std::vector<std::shared_ptr<void>> parameter_buffer_list;
         for(std::size_t i=0; i < parameter_type_info.size(); ++i) {
             const auto& [name, type] = parameter_type_info[i];
             std::shared_ptr<void> parameter_buffer;
-            switch(type){
+            // NOTE: 現状では vector の入れ子がないので，typeの長さは最大 2
+            switch(type[0]){
                 case VariableType::Int:
                     parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<int>());
                 break;
@@ -75,7 +88,12 @@ namespace PrismCascade {
                     parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<TextParam>());
                 break;
                 case VariableType::Vector:
-                    parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VectorParam>());
+                    {
+                        auto vector_container = std::make_shared<VectorParam>();
+                        assert(type.size() >= 2);  // これが落ちた場合， allocate_param からの型の受け渡しがおかしい
+                        vector_container->type = type[1];
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VectorParam>());
+                    }
                 break;
                 case VariableType::Video:
                     parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<VideoFrame>());
@@ -86,7 +104,7 @@ namespace PrismCascade {
                 default:
                     throw std::runtime_error("unknown type");
             }
-            parameter_pack_buffer.get()[i].type  = type;
+            parameter_pack_buffer.get()[i].type  = type[0];
             parameter_pack_buffer.get()[i].value = parameter_buffer.get();
             parameter_buffer_list.emplace_back(std::move(parameter_buffer));
         }
@@ -94,7 +112,7 @@ namespace PrismCascade {
 
         parameter_pack_instances[plugin_instance_handler].first = plugin_handler;
         parameter_pack_instances[plugin_instance_handler].second[is_output] = { parameter_pack_buffer, parameter_buffer_list };
-        params.size = parameter_type_info.size();
+        params.size = static_cast<int>(parameter_type_info.size());
         params.parameters = parameter_pack_buffer.get();
         return params;
     }
@@ -139,15 +157,24 @@ namespace PrismCascade {
         }
     }
 
-    bool DllMemoryManager::allocate_vector(VectorParam* buffer, VariableType type, int size){
+    bool DllMemoryManager::allocate_vector(VectorParam* buffer, int size){
         std::lock_guard<std::mutex> lock{ mutex_ };
         std::shared_ptr<void> vector_buffer;
-        switch(type){
+        // 型チェック
+        if([](VariableType type) -> bool{  // returns is_error
+            for(auto valid_type : {VariableType::Int, VariableType::Bool, VariableType::Float, VariableType::Text, VariableType::Video, VariableType::Audio})
+                if(type == valid_type)
+                    return false;
+            return true;
+        }(buffer->type))
+            throw std::runtime_error("unexpected type in vector");
+        // 確保
+        switch(buffer->type){
             case VariableType::Int:
                 vector_buffer = get_buffer_instance<int>(size);
             break;
             case VariableType::Bool:
-                vector_buffer = get_buffer_instance<bool>(size);  // TODO: std::vector を使う場合には特殊化に注意
+                vector_buffer = get_buffer_instance<bool>(size);  // NOTE: 今後バッファとして std::vector を使う場合には特殊化に注意
             break;
             case VariableType::Float:
                 vector_buffer = get_buffer_instance<double>(size);
@@ -192,13 +219,13 @@ namespace PrismCascade {
 
         vector_instances[buffer] = vector_buffer;
         buffer->size = size;
-        buffer->type = type;
+        // buffer->type はメモリ確保時点でセット済み
         buffer->buffer = vector_buffer.get();
         return true;
     }
 
-    bool DllMemoryManager::allocate_vector_static(void* ptr, VectorParam* buffer, VariableType type, int size){
-        return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_vector(buffer, type, size);
+    bool DllMemoryManager::allocate_vector_static(void* ptr, VectorParam* buffer,int size){
+        return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_vector(buffer, size);
     }
 
     void DllMemoryManager::copy_vector(VectorParam* dst, VectorParam* src){

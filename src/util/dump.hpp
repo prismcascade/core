@@ -14,12 +14,20 @@ inline void dump_plugins(const DllMemoryManager& dll_memory_manager){
         std::cerr << "      [type]    " << type_string << std::endl;
         std::cerr << "      [uuid]    " << meta_data.uuid << std::endl;
         std::cerr << "      [input]" << std::endl;
-        const std::array<std::vector<std::tuple<std::string, VariableType>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(plugin_handler);
-        for(auto&& [name, type] : type_info[0])
-            std::cerr << "         -> " << name << " (" << to_string(type) << ")" << std::endl;
+        const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(plugin_handler);
+        for(auto&& [name, type] : type_info[0]){
+            if(type[0] == VariableType::Vector)
+                std::cerr << "         -> " << name << " (Vector<" << to_string(type[1]) << ">)" << std::endl;
+            else
+                std::cerr << "         -> " << name << " (" << to_string(type[0]) << ")" << std::endl;
+        }
         std::cerr << "      [output]" << std::endl;
-        for(auto&& [name, type] : type_info[1])
-            std::cerr << "        <-  " << name << " (" << to_string(type) << ")" << std::endl;
+        for(auto&& [name, type] : type_info[1]){
+            if(type[0] == VariableType::Vector)
+                std::cerr << "        <-  " << name << " (Vector<" << to_string(type[1]) << ">)" << std::endl;
+            else
+                std::cerr << "        <-  " << name << " (" << to_string(type[0]) << ")" << std::endl;
+        }
         std::cerr << std::endl;
     }
     std::cerr << std::endl;
@@ -78,19 +86,25 @@ inline void dump_parameters(const DllMemoryManager& dll_memory_manager){
 
         // メタデータの取得
         const PluginMetaDataInternal& plugin_data = dll_memory_manager.plugin_metadata_instances.at(plugin_handler);
-        const std::array<std::vector<std::tuple<std::string, VariableType>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(plugin_handler);
+        const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(plugin_handler);
 
         // 表示
         std::cerr << "    -------- [" << plugin_instance_handler << "] " << plugin_data.name << " --------" << std::endl;
         std::cerr << "      [input]" << std::endl;
         for(int i = 0; i < type_info[0].size(); ++i){
             auto&& [name, type] = type_info[0][i];
-            std::cerr << "         -> " << name << " (" << to_string(type) << ") : " << param_to_string(param_to_string, input_parameters.first.get()[i]) << std::endl;
+            if(type[0] == VariableType::Vector)
+                std::cerr << "         -> " << name << " (vector<" << to_string(type[1]) << ">) : " << param_to_string(param_to_string, input_parameters.first.get()[i]) << std::endl;
+            else
+                std::cerr << "         -> " << name << " (" << to_string(type[0]) << ") : " << param_to_string(param_to_string, input_parameters.first.get()[i]) << std::endl;
         }
         std::cerr << "      [output]" << std::endl;
         for(int i = 0; i < type_info[1].size(); ++i){
             auto&& [name, type] = type_info[1][i];
-            std::cerr << "        <-  " << name << " (" << to_string(type) << ") : " << param_to_string(param_to_string, output_parameters.first.get()[i]) << std::endl;
+            if(type[0] == VariableType::Vector)
+                std::cerr << "        <-  " << name << " (vector<" << to_string(type[1]) << ">) : " << param_to_string(param_to_string, output_parameters.first.get()[i]) << std::endl;
+            else
+                std::cerr << "        <-  " << name << " (" << to_string(type[0]) << ") : " << param_to_string(param_to_string, output_parameters.first.get()[i]) << std::endl;
         }
         std::cerr << std::endl;
     }
