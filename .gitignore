@@ -38,3 +38,5 @@ memo.txt
 dll_build/
 
 *_old_*
+*.swp
+
