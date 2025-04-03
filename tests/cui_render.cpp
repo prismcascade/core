@@ -27,30 +27,35 @@ int main(){
         std::int64_t plugin_handler = handle_manager.freshHandler();
         std::int64_t plugin_instance_handler = handle_manager.freshHandler();
         DynamicLibrary lib(plugin_file_list[0]);
-        PluginMetaData plugin_metadata_dll;
+        {
+            // メタデータを受け渡すための一時変数
+            std::shared_ptr<PluginMetaData> plugin_metadata_dll(new PluginMetaData, [&dll_memory_manager](PluginMetaData* ptr){
+                if(ptr){
+                    dll_memory_manager.free_text(&ptr->name);
+                    dll_memory_manager.free_text(&ptr->uuid);
+                    delete ptr;
+                }
+            });
 
-        // メタ情報を取得
-        reinterpret_cast<bool(*)(void*, std::int64_t, PluginMetaData*, void*, void*, void*, void*)>(lib["getMetaInfo"])(
-            reinterpret_cast<void*>(&dll_memory_manager),
-            plugin_handler,
-            &plugin_metadata_dll,
-            reinterpret_cast<void*>(&DllMemoryManager::allocate_param_static),
-            reinterpret_cast<void*>(&DllMemoryManager::assign_text_static),
-            reinterpret_cast<void*>(&DllMemoryManager::add_required_handler_static),
-            reinterpret_cast<void*>(&DllMemoryManager::add_handleable_effect_static)
-        );
+            // メタ情報を取得
+            reinterpret_cast<bool(*)(void*, std::int64_t, PluginMetaData*, void*, void*, void*, void*)>(lib["getMetaInfo"])(
+                reinterpret_cast<void*>(&dll_memory_manager),
+                plugin_handler,
+                plugin_metadata_dll.get(),
+                reinterpret_cast<void*>(&DllMemoryManager::allocate_param_static),
+                reinterpret_cast<void*>(&DllMemoryManager::assign_text_static),
+                reinterpret_cast<void*>(&DllMemoryManager::add_required_handler_static),
+                reinterpret_cast<void*>(&DllMemoryManager::add_handleable_effect_static)
+            );
 
-        // 取得したメタ情報を保存
-        PluginMetaDataInternal plugin_metadata;
-        plugin_metadata.name = std::string(plugin_metadata_dll.name.buffer);
-        plugin_metadata.protocol_version = plugin_metadata_dll.protocol_version;
-        plugin_metadata.type = plugin_metadata_dll.type;
-        plugin_metadata.uuid = std::string(plugin_metadata_dll.uuid.buffer);
-        dll_memory_manager.plugin_metadata_instances[plugin_handler] = plugin_metadata;
-
-        // メモリ解放
-        dll_memory_manager.free_text(&plugin_metadata_dll.name);
-        dll_memory_manager.free_text(&plugin_metadata_dll.uuid);
+            // 取得したメタ情報を保存
+            PluginMetaDataInternal plugin_metadata;
+            plugin_metadata.name = std::string(plugin_metadata_dll->name.buffer);
+            plugin_metadata.protocol_version = plugin_metadata_dll->protocol_version;
+            plugin_metadata.type = plugin_metadata_dll->type;
+            plugin_metadata.uuid = std::string(plugin_metadata_dll->uuid.buffer);
+            dll_memory_manager.plugin_metadata_instances[plugin_handler] = plugin_metadata;
+        }
 
         // プラグインのロードイベント発火
         reinterpret_cast<bool(*)()>(lib["onLoadPlugin"])();
