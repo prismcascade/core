@@ -280,31 +280,31 @@ static ParameterPack vecvart2parampack (std::vector<VarData_t> var_data){
 	param_pack.size = param_size;
 	param_pack.parameters = (Parameter*)calloc(param_size, sizeof(Parameter));
 	for (int i=0; i<param_size; i++){
-		if(std::string(var_data[i].var_type) != std::string("int_param")){
+		if(std::string(var_data[i].var_type) == std::string("int_param")){
 			param_pack.parameters[i].type = VariableType::Int;
 			param_pack.parameters[i].value = &var_data[i].var_union.int_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("bool_param")){
+		if(std::string(var_data[i].var_type) == std::string("bool_param")){
 			param_pack.parameters[i].type = VariableType::Bool;
 			param_pack.parameters[i].value = &var_data[i].var_union.bool_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("float_param")){
+		if(std::string(var_data[i].var_type) == std::string("float_param")){
 			param_pack.parameters[i].type = VariableType::Float;
 			param_pack.parameters[i].value = &var_data[i].var_union.float_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("text_param")){
+		if(std::string(var_data[i].var_type) == std::string("text_param")){
 			param_pack.parameters[i].type = VariableType::Text;
 			param_pack.parameters[i].value = var_data[i].var_union.text_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("vector_param")){
+		if(std::string(var_data[i].var_type) == std::string("vector_param")){
 			param_pack.parameters[i].type = VariableType::Vector;
 			param_pack.parameters[i].value = var_data[i].var_union.vector_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("video_param")){
+		if(std::string(var_data[i].var_type) == std::string("video_param")){
 			param_pack.parameters[i].type = VariableType::Video;
 			param_pack.parameters[i].value = var_data[i].var_union.video_param;
 		}
-		if(std::string(var_data[i].var_type) != std::string("audio_param")){
+		if(std::string(var_data[i].var_type) == std::string("audio_param")){
 			param_pack.parameters[i].type = VariableType::Audio;
 			param_pack.parameters[i].value = var_data[i].var_union.audio_param;
 		}
