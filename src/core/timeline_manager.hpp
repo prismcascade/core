@@ -30,6 +30,11 @@ using namespace PrismCascade;
 #include <render/rendering_scheduler.hpp>
 #include <util/dump.hpp>
 
+
+#if defined(_WIN32) || defined(_WIN64)
+#define _TIMELINE_IS_WINDOWS_BUILD
+#endif
+
 #define TYPE_NAME_SIZE 256
 
 /*
@@ -231,9 +236,9 @@ void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int lay
 	new_clip->start_frame = start_frame;
 	new_clip->end_frame = end_frame;
 	new_clip->layer = layer;
-	strcpy_s(new_clip->clip_type, clip_type);
-	strcpy_s(new_clip->effect.plugin_name, plugin_name);
-	strcpy_s(new_clip->effect.plugin_uuid, plugin_uuid);
+	strcpy(new_clip->clip_type, clip_type);
+	strcpy(new_clip->effect.plugin_name, plugin_name);
+	strcpy(new_clip->effect.plugin_uuid, plugin_uuid);
 	new_clip->effect.param_vars = param_vars;
 	new_clip->effect.input_vars = input_vars;
 	new_clip->effect.output_vars = output_vars;
@@ -300,37 +305,37 @@ void start_update(){
 			VarVector_t param_vars;
 			param_vars.length = 1;
 			param_vars.vars = (VarData_t*)calloc(param_vars.length, sizeof(VarData_t));
-			strcpy_s(param_vars.vars[0].var_name, "param_01");
-			strcpy_s(param_vars.vars[0].var_type,"int_param");
+			strcpy(param_vars.vars[0].var_name, "param_01");
+			strcpy(param_vars.vars[0].var_type,"int_param");
 			param_vars.vars[0].var_union.int_param = 3;
 			
 			// 入力値
 			VarVector_t input_vars;
 			input_vars.length = 1;
 			input_vars.vars = (VarData_t*)calloc(input_vars.length, sizeof(VarData_t));
-			strcpy_s(input_vars.vars[0].var_name, "input_01");
-			strcpy_s(input_vars.vars[0].var_type,"int_param");
+			strcpy(input_vars.vars[0].var_name, "input_01");
+			strcpy(input_vars.vars[0].var_type,"int_param");
 			input_vars.vars[0].var_union.int_param = 3;
 			VarData_t data_01;
-			strcpy_s(data_01.var_name, "input_01");
-			strcpy_s(data_01.var_type, "int_param");
+			strcpy(data_01.var_name, "input_01");
+			strcpy(data_01.var_type, "int_param");
 			add_global_data(data_01);
 			
 			// 出力値
 			VarVector_t output_vars;
 			output_vars.length = 2;
 			output_vars.vars = (VarData_t*)calloc(output_vars.length, sizeof(VarData_t));
-			strcpy_s(output_vars.vars[0].var_name, "output_01");
-			strcpy_s(output_vars.vars[0].var_type,"int_param");
-			strcpy_s(output_vars.vars[1].var_name, "output_02");
-			strcpy_s(output_vars.vars[1].var_type,"vector_param");
+			strcpy(output_vars.vars[0].var_name, "output_01");
+			strcpy(output_vars.vars[0].var_type,"int_param");
+			strcpy(output_vars.vars[1].var_name, "output_02");
+			strcpy(output_vars.vars[1].var_type,"vector_param");
 			VarData_t data_03;
-			strcpy_s(data_03.var_name, "output_01");
-			strcpy_s(data_03.var_type, "int_param");
+			strcpy(data_03.var_name, "output_01");
+			strcpy(data_03.var_type, "int_param");
 			add_global_data(data_03);
 			VarData_t data_04;
-			strcpy_s(data_04.var_name, "output_02");
-			strcpy_s(data_04.var_type, "vector_param");
+			strcpy(data_04.var_name, "output_02");
+			strcpy(data_04.var_type, "vector_param");
 			add_global_data(data_04);
 			
 			// 最大フレーム及び最大レイヤの更新
@@ -353,11 +358,15 @@ void start_update(){
 			}
 		}else if(command_input == 7){
 			VarData_t data;
-			strcpy_s(data.var_name, "VAR");
-			strcpy_s(data.var_type, "int_param");
+			strcpy(data.var_name, "VAR");
+			strcpy(data.var_type, "int_param");
 			add_global_data(data);
 		}
+#ifdef _TIMELINE_IS_WINDOWS_BUILD
 		std::system("cls");
+#else
+		std::system("clear");
+#endif
 		output_data();
 		output_clips();
 		update_global_data();

@@ -149,7 +149,6 @@ void PluginManager::gather_subtree_nodes(std::shared_ptr<AstNode> start, std::un
 // * サブツリー内部を壊さずに外部との接続だけ切り離し，サブツリーを独立させる。
 void PluginManager::remove_subtree_boundary_references(const std::unordered_set<std::shared_ptr<AstNode>>& subtree_set){
     for(auto&& n : subtree_set){
-        std::cerr << "start: " << n->plugin_instance_handler << std::endl;
         // 1) 親リンク (n->parent)
         if(auto p = n->parent.lock()){
             // p が subtree_set に含まれない = サブツリー外ノード
