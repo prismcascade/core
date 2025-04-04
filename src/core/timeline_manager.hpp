@@ -15,6 +15,7 @@ private:
 */
 
 }
+using namespace PrismCascade;
 
 #include <vector>
 #include <iostream>
@@ -22,9 +23,11 @@ private:
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <core/project_data.hpp>
 
 #define TYPE_NAME_SIZE 256
 
+/*
 typedef struct{
 	unsigned int height;
 	unsigned int width;
@@ -55,11 +58,11 @@ typedef struct{
 	VarUnion_t var_union;
 	char var_type[TYPE_NAME_SIZE];
 	char var_name[TYPE_NAME_SIZE];
-}Var_t;
+}VarData_t;
 
 typedef struct{
 	unsigned int length;
-	Var_t* vars;
+	VarData_t* vars;
 }VarVector_t;
 
 typedef struct{
@@ -68,6 +71,7 @@ typedef struct{
 	VarVector_t input_vars;
 	VarVector_t output_vars;
 }Effect_t;
+*/
 
 typedef struct Clip Clip_t;
 struct Clip{
@@ -81,18 +85,18 @@ struct Clip{
 
 typedef struct GlobalData GlobalData_t;
 struct GlobalData{
-	Var_t var;
+	VarData_t var;
 	GlobalData_t* next_var = NULL;
 };
 
-// -- なんかグローバル変数とか -----------------------------------------
+// -- global data -----------------------------------------
 unsigned int g_frames = 1;
 unsigned int g_layers = 1;
 unsigned int g_cursol = 0;
 Clip_t* g_first_clip = NULL;
 GlobalData_t* g_first_global_data = NULL;
 
-// -- なんか関数とか ---------------------------------------------------
+// -- function ---------------------------------------------------
 std::vector<Effect_t*> get_frame_effect(){
 	std::vector<Effect_t*> frame_effect(g_layers, NULL);
 	Clip_t* process_clip = g_first_clip;
@@ -180,7 +184,7 @@ void output_clips(){
 	std::cout << "-------------------------------------------------------------------------------" << std::endl;
 }
 
-void add_global_data(Var_t data){
+void add_global_data(VarData_t data){
 	GlobalData_t* new_data = new GlobalData_t;
 	new_data->var = data;
 	if (g_first_global_data == NULL){
@@ -253,17 +257,25 @@ void start_update(){
 			
 			VarVector_t param_vars;
 			param_vars.length = 1;
-			param_vars.vars = (Var_t*)calloc(param_vars.length, sizeof(Var_t));
+			param_vars.vars = (VarData_t*)calloc(param_vars.length, sizeof(VarData_t));
 			strcpy_s(param_vars.vars[0].var_name, "param_01");
-			strcpy_s(param_vars.vars[0].var_type,"integer_num");
-			param_vars.vars[0].var_union.integer_num = 3;
+			strcpy_s(param_vars.vars[0].var_type,"int_param");
+			param_vars.vars[0].var_union.int_param = 3;
 			VarVector_t input_vars;
 			input_vars.length = 2;
-			input_vars.vars = (Var_t*)calloc(input_vars.length, sizeof(Var_t));
+			input_vars.vars = (VarData_t*)calloc(input_vars.length, sizeof(VarData_t));
 			strcpy_s(input_vars.vars[0].var_name, "input_01");
-			strcpy_s(input_vars.vars[0].var_type,"integer_num");
+			strcpy_s(input_vars.vars[0].var_type,"int_param");
 			strcpy_s(input_vars.vars[1].var_name, "input_02");
-			strcpy_s(input_vars.vars[1].var_type,"integer_num");
+			strcpy_s(input_vars.vars[1].var_type,"int_param");
+			VarData_t data_01;
+			strcpy_s(data_01.var_name, "input_01");
+			strcpy_s(data_01.var_type, "int_param");
+			add_global_data(data_01);
+			VarData_t data_02;
+			strcpy_s(data_02.var_name, "input_02");
+			strcpy_s(data_02.var_type, "int_param");
+			add_global_data(data_02);
 			/*
 			VarVector_t param_vars;
 			param_vars.length = 0;
@@ -291,9 +303,9 @@ void start_update(){
 				g_cursol--;
 			}
 		}else if(command_input == 7){
-			Var_t data;
+			VarData_t data;
 			strcpy_s(data.var_name, "VAR");
-			strcpy_s(data.var_type, "integer");
+			strcpy_s(data.var_type, "int_param");
 			add_global_data(data);
 		}
 		std::system("cls");

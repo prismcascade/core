@@ -8,6 +8,8 @@
 #include <optional>
 #include <vector>
 
+#define TYPE_NAME_SIZE 256
+
 namespace PrismCascade {
 
 extern "C" {
@@ -55,6 +57,7 @@ struct TextParam {
     const char* buffer = nullptr;
 };
 
+// TODO : 多分これをunionに入れるとエラー出る。なんとかする。
 struct VectorParam {
     VariableType type{};
     int size = 0;
@@ -163,19 +166,20 @@ extern "C" {
 		int screen_vertical;
 	}ProjectMeta_t;
 
+	typedef union{
+		int int_param;
+		bool bool_param;
+		float float_param;
+		//TextParam text_param;
+		//VectorParam vector_param;
+		//VectorParam video_param;
+		//AudioParam audio_param;
+	}VarUnion_t;
+
 	typedef struct VarData{
-		VariableType var_type;
-		char var_name;
-		union VarUnion{
-			int int_param;
-			bool bool_param;
-			float float_param;
-			TextParam text_param;
-			VectorParam vector_param;
-			VectorParam video_param;
-			AudioParam audio_param;
-		};
-		union VarUnion var_union;
+		char var_type[TYPE_NAME_SIZE];
+		char var_name[TYPE_NAME_SIZE];
+		VarUnion_t var_union;
 	}VarData_t;
 
 	typedef struct DataPack{
@@ -206,19 +210,35 @@ extern "C" {
 		Macro,
 		Effect
 	}ClipType_t;
-
+	
+	typedef struct{
+		unsigned int length;
+		VarData_t* vars;
+	}VarVector_t;
+	
+	typedef struct{
+		char plugin_name[TYPE_NAME_SIZE];
+		VarVector_t param_vars;
+		VarVector_t input_vars;
+		VarVector_t output_vars;
+	}Effect_t;
+	
+	/*
+	typedef struct Clip Clip_t;
 	typedef struct Clip {
-		ClipType_t clip_type;
+		char clip_type[TYPE_NAME_SIZE];
 		int layer;
-		int frame_start;
-		int frame_end;
+		int start_frame;
+		int end_frame;
 		union ClipUnion{
 			EffectClip_t macro_clip;
 			MacroClip_t effect_clip;
 		};
 		union ClipUnion clip_union;
+		Clip_t* next_clip = NULL;
 	}Clip_t;
-
+	*/
+	/*
 	typedef struct TimelineData{
 		int clip_quantity;
 		Clip_t* clip;
@@ -229,10 +249,12 @@ extern "C" {
 		DataPack_t global_data;
 		TimelineData_t timeline_data;
 	}ProjectData_t;
+	*/
 
 	// hpp内で変数定義するとエラー出るからこれだけコメントアウトした
 	// ProjectData_t project_data;
 
+	/*
 	// project_dataにclipを追加する関数
 	bool AddClip(Clip_t clip);
 
@@ -247,6 +269,7 @@ extern "C" {
 
 	//  project_dataのclipを伸縮する関数
 	bool FlexClip(Clip_t* clip, int frame_start, int frame_end);
+	*/
 }
 
 }

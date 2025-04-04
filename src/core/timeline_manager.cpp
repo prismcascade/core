@@ -14,6 +14,7 @@
 
 namespace PrismCascade {
 
+	/*
 // 全レイヤ、全クリップのリスト
 std::vector<std::vector<Clip_t>> layers;
 int recent_frame;
@@ -52,7 +53,7 @@ void add_clip(Clip_t new_clip){
 			layers[new_clip.layer].push_back(new_clip);
 		}
 	}
-}
+}*/
 
 }
 

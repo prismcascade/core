@@ -77,7 +77,7 @@ AstNode::input_t AstNode::make_empty_value(const std::vector<VariableType>& type
 }
 
 // ---------------- //
-
+/*
 bool AddClip(Clip_t clip)
 {
 	return false;
@@ -102,5 +102,6 @@ bool FlexClip(Clip_t *clip, int frame_start, int frame_end)
 {
 	return false;
 }
+*/
 
 }
