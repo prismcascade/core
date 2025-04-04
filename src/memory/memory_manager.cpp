@@ -310,7 +310,7 @@ namespace PrismCascade {
 
     // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
-    void DllMemoryManager::dumpMemoryUsage()
+    void DllMemoryManager::dump_memory_usage()
     {
         std::lock_guard<std::mutex> lock{ mutex_ };
 

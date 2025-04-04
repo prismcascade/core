@@ -66,7 +66,7 @@ struct DllMemoryManager {
     void copy_audio(AudioParam* dst, AudioParam* src);
     void free_audio(AudioParam* buffer);
 
-    void dumpMemoryUsage();
+    void dump_memory_usage();
 
 private:
     std::mutex mutex_;

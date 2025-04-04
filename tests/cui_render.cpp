@@ -72,6 +72,7 @@ int main(){
         plugin_manager.assign_input(root, 0, child);
         plugin_manager.assign_input(child, 0, 25);
         run(root, 0);
+        plugin_manager.dll_memory_manager.dump_memory_usage();
 
         std::cout << "----------------" << std::endl;
 
@@ -82,11 +83,13 @@ int main(){
         auto old_root = root;
         root = new_root;
         run(root, 1);
+        plugin_manager.dll_memory_manager.dump_memory_usage();
 
         std::cout << "----------------" << std::endl;
 
         plugin_manager.assign_input(new_root, 2, 12);
         run(root, 2);
+        plugin_manager.dll_memory_manager.dump_memory_usage();
     }
 
 	std::cout << "----------------" << std::endl;
