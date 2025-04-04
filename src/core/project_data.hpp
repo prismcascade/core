@@ -218,6 +218,7 @@ extern "C" {
 	
 	typedef struct{
 		char plugin_name[TYPE_NAME_SIZE];
+		char plugin_uuid[TYPE_NAME_SIZE];
 		VarVector_t param_vars;
 		VarVector_t input_vars;
 		VarVector_t output_vars;
@@ -281,15 +282,15 @@ static ParameterPack vecvart2parampack (std::vector<VarData_t> var_data){
 	for (int i=0; i<param_size; i++){
 		if(strcmp(var_data[i].var_type, "int_param")){
 			param_pack.parameters[i].type = VariableType::Int;
-			param_pack.parameters[i].value = var_data[i].var_union.int_param;
+			param_pack.parameters[i].value = &var_data[i].var_union.int_param;
 		}
 		if(strcmp(var_data[i].var_type, "bool_param")){
 			param_pack.parameters[i].type = VariableType::Bool;
-			param_pack.parameters[i].value = var_data[i].var_union.bool_param;
+			param_pack.parameters[i].value = &var_data[i].var_union.bool_param;
 		}
 		if(strcmp(var_data[i].var_type, "float_param")){
 			param_pack.parameters[i].type = VariableType::Float;
-			param_pack.parameters[i].value = var_data[i].var_union.float_param;
+			param_pack.parameters[i].value = &var_data[i].var_union.float_param;
 		}
 		if(strcmp(var_data[i].var_type, "text_param")){
 			param_pack.parameters[i].type = VariableType::Text;

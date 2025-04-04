@@ -169,7 +169,7 @@ void output_clips(){
 	std::cout << "-------------------------------------------------------------------------------" << std::endl;
 	for (int i=0; i<g_layers; i++){
 		if(frame_effect[i] != NULL){
-			std::cout << "< " << frame_effect[i]->plugin_name << " >" << std::endl;
+			std::cout << "< " << frame_effect[i]->plugin_name << " | " << frame_effect[i]->plugin_uuid << " >" << std::endl;
 			std::cout << "params : " << std::endl;
 			for (int j=0; j<frame_effect[i]->param_vars.length; j++){
 				std::cout << "  " << frame_effect[i]->param_vars.vars[j].var_name << " (Type: " << frame_effect[i]->param_vars.vars[j].var_type << ")" << std::endl;
@@ -210,7 +210,7 @@ void add_global_data(VarData_t data){
 	}
 }
 
-void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int layer, const char* clip_type, const char* plugin_name, VarVector_t param_vars, VarVector_t input_vars, VarVector_t output_vars){
+void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int layer, const char* clip_type, const char* plugin_name, const char* plugin_uuid, VarVector_t param_vars, VarVector_t input_vars, VarVector_t output_vars){
 	// 新しいクリップオブジェクトを作成
 	Clip_t* new_clip = new Clip_t;
 	new_clip->start_frame = start_frame;
@@ -218,6 +218,7 @@ void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int lay
 	new_clip->layer = layer;
 	strcpy_s(new_clip->clip_type, clip_type);
 	strcpy_s(new_clip->effect.plugin_name, plugin_name);
+	strcpy_s(new_clip->effect.plugin_uuid, plugin_uuid);
 	new_clip->effect.param_vars = param_vars;
 	new_clip->effect.input_vars = input_vars;
 	new_clip->effect.output_vars = output_vars;
@@ -242,6 +243,14 @@ void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int lay
 void start_update(){
 	std::cout << "Start Timeline Update!!" << std::endl;
 	PluginManager plugin_manager;
+	
+	int plugin_size = plugin_manager.dll_memory_manager.plugin_uuid_to_handler.size();
+	std::vector<std::string> uuid_vector = {};
+	auto plug_nanikore = plugin_manager.dll_memory_manager.plugin_uuid_to_handler.begin();
+	for (int i=0; i<plugin_size; i++){
+		uuid_vector.push_back(plug_nanikore->first);
+		plug_nanikore = ++plug_nanikore;
+	}
 	while (true){
 		dump_plugins(plugin_manager.dll_memory_manager);
 		std::cout << "-------------------------------------------------------------------------------" << std::endl;
@@ -263,6 +272,14 @@ void start_update(){
 			std::cout << "EffectName : ";
 			std::string effect_name;
 			std::cin >> effect_name;
+
+			for (int i=0; i<plugin_size; i++){
+				std::cout << i << " : " << uuid_vector[i] << std::endl;
+			}
+			std::cout << "EffectNumber : ";
+			int effect_num;
+			std::cin >> effect_num;
+			std::string effect_uuid = uuid_vector[effect_num];
 			
 			VarVector_t param_vars;
 			param_vars.length = 1;
@@ -314,7 +331,7 @@ void start_update(){
 			if (g_layers <= layer_input){
 				g_layers = layer_input + 1;
 			}
-			add_clip(start_frame_input, end_frame_input, layer_input, "Effect", effect_name.c_str(), param_vars, input_vars, output_vars);
+			add_clip(start_frame_input, end_frame_input, layer_input, "Effect", effect_name.c_str(), effect_uuid.c_str(), param_vars, input_vars, output_vars);
 		}else if(command_input == 5){
 			if (g_cursol < g_frames-1){
 				g_cursol++;
