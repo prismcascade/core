@@ -72,44 +72,38 @@ PluginManager::~PluginManager(){
     }
 }
 
-void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNode::input_t input_value){
-    // uuid が変だったら例外が飛ぶが，そもそも make_node で弾かれるはずなのでアンロードしない限り安全
-    const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(node->plugin_handler);
-    // 値を運ぶ先が範囲外なら落とす
-    if(index < 0 || type_info[0].size() <= index)
-        throw std::domain_error("[PluginManager::assign_input] index out of bounds");
-
-    // 型検査
-    VariableType input_type{}, input_type_inner{};
-    if(std::holds_alternative<int>(input_value))
-        input_type = VariableType::Int;
-    else if(std::holds_alternative<bool>(input_value))
-        input_type = VariableType::Bool;
-    else if(std::holds_alternative<double>(input_value))
-        input_type = VariableType::Float;
-    else if(std::holds_alternative<std::string>(input_value))
-        input_type = VariableType::Text;
-    else if(std::holds_alternative<std::shared_ptr<AstNode>>(input_value)) {
-        std::shared_ptr<AstNode> sub_function = std::get<std::shared_ptr<AstNode>>(input_value);
-        const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info_sub = dll_memory_manager.parameter_type_informations.at(sub_function->plugin_handler);
-        // [1][0][0] は， 出力 の 0番目 の メイン型（VectorとかIntとか）を指している
-        const auto& [sub_main_output_name, sub_main_output_type] = type_info_sub[1].at(0);
-        input_type = sub_main_output_type.at(0);
-        if(input_type == VariableType::Vector)
-            input_type_inner = sub_main_output_type.at(1);
-        // 子ノードの親を更新
-        if(std::shared_ptr<AstNode> old_parent = sub_function->parent.lock()){
-            // 古い親から外し，デフォルト値を入れる
-            for(int i = 0; i < static_cast<int>(old_parent->children.size()); ++i){
-                const auto& old_parent_child = old_parent->children[i];
-                if(std::holds_alternative<std::shared_ptr<AstNode>>(old_parent_child)
-                && std::get<std::shared_ptr<AstNode>>(old_parent_child) == sub_function){
-                    // 元の型検査に通っていれば落ちないはず
-                    assign_input(old_parent, i, AstNode::make_empty_value(sub_main_output_type));
-                }
-            }
-        }
-        sub_function->parent = node;  // 新しい親を設定する
+std::vector<VariableType> PluginManager::infer_input_type(const AstNode::input_t& input_value){
+    std::vector<VariableType> inferred_type(1);
+    if(std::holds_alternative<int>(input_value)) {
+        inferred_type[0] = VariableType::Int;
+    } else if(std::holds_alternative<bool>(input_value)) {
+        inferred_type[0] = VariableType::Bool;
+    } else if(std::holds_alternative<double>(input_value)) {
+        inferred_type[0] = VariableType::Float;
+    } else if(std::holds_alternative<std::string>(input_value)) {
+        inferred_type[0] = VariableType::Text;
+    } else if(std::holds_alternative<VectorParam>(input_value)) {
+        inferred_type[0] = VariableType::Vector;
+        const VectorParam& vector = std::get<VectorParam>(input_value);
+        inferred_type.push_back(vector.type);
+    } else if(std::holds_alternative<VideoFrame>(input_value)) {
+        inferred_type[0] = VariableType::Video;
+    } else if(std::holds_alternative<AudioParam>(input_value)) {
+        inferred_type[0] = VariableType::Audio;
+    } else if(std::holds_alternative<std::shared_ptr<AstNode>>(input_value)) {
+        if(std::shared_ptr<AstNode> sub_function = std::get<std::shared_ptr<AstNode>>(input_value)) {
+            // [1][0][0] は，出力 の 0番目 の メイン型（VectorとかIntとか）を指している
+            const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info_sub =
+                dll_memory_manager.parameter_type_informations.at(sub_function->plugin_handler);
+            if(type_info_sub[1].empty())
+                throw std::domain_error("[PluginManager::assign_input] sub_function has no output param");
+            const auto& [sub_main_output_name, sub_main_output_type] = type_info_sub[1].at(0);
+            inferred_type[0] = sub_main_output_type.at(0);
+            // 後半の条件が通らなかった場合，型情報が壊れている
+            if(inferred_type[0] == VariableType::Vector && sub_main_output_type.size() > 1)
+                inferred_type.push_back(sub_main_output_type.at(1));
+        } else
+            std::domain_error("[PluginManager::assign_input] sub_function is null");
     } else if(std::holds_alternative<AstNode::SubEdge>(input_value)) {
         const AstNode::SubEdge& sub_edge = std::get<AstNode::SubEdge>(input_value);
         if(std::shared_ptr<AstNode> source_function = sub_edge.from_node.lock()){
@@ -117,34 +111,116 @@ void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNo
             // TODO: macroが副出力をするのは，設計上で本当に悪？ (要検討)
             if(source_function->plugin_type != PluginType::Effect)
                 throw std::domain_error("[PluginManager::assign_input] target of subedge cannot be macro (for now)");
-            const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info_sub = dll_memory_manager.parameter_type_informations.at(source_function->plugin_handler);
+            const auto& type_info_sub = dll_memory_manager.parameter_type_informations.at(source_function->plugin_handler);
             // 0番目は主出力なので， sub_edge の参照先としては許容しない
-            if(sub_edge.index <= 0 || type_info_sub[1].size() <= sub_edge.index)
+            if(sub_edge.index <= 0 || sub_edge.index >= static_cast<int>(type_info_sub[1].size()))
                 throw std::domain_error("[PluginManager::assign_input] index of subedge out of bounds");
-            // [1][n][0] は， 出力 の n番目 の メイン型（VectorとかIntとか）を指している
             const auto& [sub_output_name, sub_output_type] = type_info_sub[1].at(sub_edge.index);
-            input_type = sub_output_type.at(0);
-            if(input_type == VariableType::Vector)
-                input_type_inner = sub_output_type.at(1);
+            inferred_type[0] = sub_output_type.at(0);
+            // 後半の条件が通らなかった場合，型情報が壊れている
+            if(inferred_type[0] == VariableType::Vector && sub_output_type.size() > 1)
+                inferred_type.push_back(sub_output_type.at(1));
         } else
             throw std::domain_error("[PluginManager::assign_input] input sub_edge has been expired");
-        input_type = VariableType::Text;
+    } else
+        throw std::domain_error("[PluginManager::assign_input] unsupported or unhandled type in input_value");
+    return inferred_type;
+}
+
+void PluginManager::remove_old_references(const AstNode::input_t& old_value, std::shared_ptr<AstNode> node){
+    if(std::holds_alternative<AstNode::SubEdge>(old_value)){
+        const auto& old_edge = std::get<AstNode::SubEdge>(old_value);
+        if(std::shared_ptr<AstNode> old_src = old_edge.from_node.lock()){
+            auto& dest_list = old_src->sub_output_destinations;
+            dest_list.erase(
+                std::remove_if(dest_list.begin(), dest_list.end(),
+                    [&](const std::weak_ptr<AstNode>& w){ return (w.lock() == node); }
+                ), dest_list.end());
+        }
+    } else if(std::holds_alternative<std::shared_ptr<AstNode>>(old_value)){
+        std::shared_ptr<AstNode> old_child = std::get<std::shared_ptr<AstNode>>(old_value);
+        if(old_child){
+            if(std::shared_ptr<AstNode> p = old_child->parent.lock()){
+                if(p == node){
+                    // 親子関係を解除
+                    old_child->parent.reset();
+
+                    // old_child->sub_output_destination に入っているノードは
+                    // この old_child を from_node としている sub_edge を持っている
+                    for(auto&& sub_output_destination_weak : old_child->sub_output_destinations){
+                        if(auto sub_output_destination = sub_output_destination_weak.lock()){
+                            // dest->children を走査して，sub_edge.from_node == old_child の箇所を置き換える
+                            // parameter_type_informations の情報を使うには plugin_handler 等を取得する
+                            for(std::size_t i = 0; i < sub_output_destination->children.size(); ++i){
+                                auto& destination_parameter = sub_output_destination->children[i];
+                                if(std::holds_alternative<AstNode::SubEdge>(destination_parameter)){
+                                    auto& destination_sub_edge = std::get<AstNode::SubEdge>(destination_parameter);
+                                    if(destination_sub_edge.from_node.lock() == old_child){
+                                        // デフォルト値を作る
+                                        // [plugin_handler] の input の [i] から型情報を参照
+                                        const auto& type_info_destination = dll_memory_manager.parameter_type_informations.at(sub_output_destination->plugin_handler);
+                                        const auto& [param_name, param_types] = type_info_destination[0].at(i);
+                                        AstNode::input_t empty_v = AstNode::make_empty_value(param_types);
+
+                                        // 本来は assign_input(dest, i, empty_v); が筋だが，型検査は済んでいるので直接書き換える
+                                        destination_parameter = empty_v;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // sub_edge を消し終わったのでクリア
+                    old_child->sub_output_destinations.clear();
+                }
+            }
+        }
+    }
+}
+
+void PluginManager::add_new_references(const AstNode::input_t& new_value, std::shared_ptr<AstNode> node){
+    if(std::holds_alternative<AstNode::SubEdge>(new_value)){
+        const auto& new_edge = std::get<AstNode::SubEdge>(new_value);
+        if(std::shared_ptr<AstNode> new_edge_source = new_edge.from_node.lock()){
+            new_edge_source->sub_output_destinations.push_back(node);
+        }
+    } else if(std::holds_alternative<std::shared_ptr<AstNode>>(new_value)){
+        std::shared_ptr<AstNode> new_child = std::get<std::shared_ptr<AstNode>>(new_value);
+        if(new_child){
+            new_child->parent = node;
+        }
+    }
+}
+
+void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNode::input_t input_value){
+    // uuid が変だったら例外が飛ぶが，そもそも make_node で弾かれるはずなのでアンロードしない限り安全
+    const std::array<std::vector<std::tuple<std::string, std::vector<VariableType>>>, 2>& type_info = dll_memory_manager.parameter_type_informations.at(node->plugin_handler);
+    // 値を運ぶ先が範囲外なら落とす
+    if(index < 0 || type_info[0].size() <= index)
+        throw std::domain_error("[PluginManager::assign_input] index out of bounds");
+
+    // 旧値を取得
+    AstNode::input_t old_value = node->children.at(index);
+    std::vector<VariableType> input_value_type = infer_input_type(input_value);
+
+    // 子ノードとして同一のASTを代入しようとした際に弾く
+    if(std::holds_alternative<std::shared_ptr<AstNode>>(input_value) && std::holds_alternative<std::shared_ptr<AstNode>>(old_value))
+        if(std::get<std::shared_ptr<AstNode>>(input_value) == std::get<std::shared_ptr<AstNode>>(old_value))
+            return ;
+
+    // 型検査
+    auto&& [param_name, param_types] = type_info[0].at(index);
+    if(param_types.at(0) != input_value_type.at(0))
+        throw std::domain_error("[PluginManager::assign_input] input type does not match (main)");
+    if(input_value_type.at(0) == VariableType::Vector && param_types.size() > 1) {
+        if(param_types.at(1) != input_value_type.at(1))
+            throw std::domain_error("[PluginManager::assign_input] input type does not match (vector inner)");
     }
 
-    // 型検査に通ったら接続する
-    if([&](){
-        auto&& [name, types] = type_info[0].at(index);
-        if(types.at(0) != input_type)
-            return false;
-        if(types.at(0) == VariableType::Vector && types.at(1) != input_type_inner)
-            return false;
-        return true;
-    }()){
-        // subedge
-        // make_node でアロケーション済みのはずなので，基本的には at でエラーは出ないはず
-        node->children.at(index) = input_value;
-    } else
-        throw std::domain_error("[PluginManager::assign_input] input type does not match");
+    // 値の更新
+    remove_old_references(old_value, node);
+    node->children.at(index) = input_value;
+    add_new_references(input_value, node);
 }
 
 std::shared_ptr<AstNode> PluginManager::make_node(std::string uuid, std::weak_ptr<AstNode> parent){

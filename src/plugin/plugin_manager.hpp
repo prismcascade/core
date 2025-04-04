@@ -49,6 +49,11 @@ public:
 
 private:
     std::map<std::uint64_t, DynamicLibrary> dynamic_libraries;
+
+    std::vector<VariableType> infer_input_type(const AstNode::input_t& input_value);
+    void remove_old_references(const AstNode::input_t& old_value, std::shared_ptr<AstNode> node);
+    void add_new_references(const AstNode::input_t& new_value, std::shared_ptr<AstNode> node);
+
     // std::map<std::string, PluginHandle> plugins;
     // std::map<std::string, EffectHandler*> effectRegistry;
 };

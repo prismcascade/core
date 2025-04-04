@@ -133,7 +133,7 @@ struct AstNode {
 	std::weak_ptr<AstNode> parent;
 
 	// 削除時にdead_input を検査するための，仮親ノード一覧
-	std::vector<std::weak_ptr<AstNode>> sub_output_destination;
+	std::vector<std::weak_ptr<AstNode>> sub_output_destinations;
 
 
 	// これ自体が video clip や audio clip としてふるまう場合，そのメタデータが入る
