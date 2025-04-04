@@ -122,7 +122,7 @@ void output_data(){
 	if (g_first_global_data != NULL){
 		GlobalData_t* process_data = g_first_global_data;
 		while(process_data != NULL){
-			std::cout << "var_name:" << process_data->var.var_name << " | var_type" << process_data->var.var_type << std::endl;;
+			std::cout << "var_name:" << process_data->var.var_name << " | var_type: " << process_data->var.var_type << std::endl;;
 			process_data = process_data->next_var;
 		}
 	}
@@ -187,6 +187,21 @@ void output_clips(){
 		//std::cout << "*******************************************************************************" << std::endl;
 	}
 	std::cout << "-------------------------------------------------------------------------------" << std::endl;
+}
+
+void update_global_data(){
+	std::vector<Effect_t*> frame_effect = get_frame_effect();
+	for (int i=0; i<g_layers; i++){
+		if(frame_effect[i] != NULL){
+			PluginManager plugin_manager;
+			std::shared_ptr<AstNode> effect = plugin_manager.make_node(frame_effect[i]->plugin_uuid);
+			plugin_manager.assign_input(effect, 0, frame_effect[i]->input_vars.vars[0].var_union.int_param);
+			std::cout << "frame_effect[i]->input_vars.vars[0].var_union.int_param : " << frame_effect[i]->input_vars.vars[0].var_union.int_param << std::endl;
+			plugin_manager.invoke_start_rendering(effect);
+			bool ok_effect = plugin_manager.invoke_render_frame(effect, g_cursol);
+			dump_parameters(plugin_manager.dll_memory_manager);
+		}
+	}
 }
 
 void add_global_data(VarData_t data){
@@ -281,56 +296,52 @@ void start_update(){
 			std::cin >> effect_num;
 			std::string effect_uuid = uuid_vector[effect_num];
 			
+			// パラメータ値(いらんかもしれん)
 			VarVector_t param_vars;
 			param_vars.length = 1;
 			param_vars.vars = (VarData_t*)calloc(param_vars.length, sizeof(VarData_t));
 			strcpy_s(param_vars.vars[0].var_name, "param_01");
 			strcpy_s(param_vars.vars[0].var_type,"int_param");
 			param_vars.vars[0].var_union.int_param = 3;
+			
+			// 入力値
 			VarVector_t input_vars;
-			input_vars.length = 2;
+			input_vars.length = 1;
 			input_vars.vars = (VarData_t*)calloc(input_vars.length, sizeof(VarData_t));
 			strcpy_s(input_vars.vars[0].var_name, "input_01");
 			strcpy_s(input_vars.vars[0].var_type,"int_param");
-			strcpy_s(input_vars.vars[1].var_name, "input_02");
-			strcpy_s(input_vars.vars[1].var_type,"int_param");
+			input_vars.vars[0].var_union.int_param = 3;
 			VarData_t data_01;
 			strcpy_s(data_01.var_name, "input_01");
 			strcpy_s(data_01.var_type, "int_param");
 			add_global_data(data_01);
-			VarData_t data_02;
-			strcpy_s(data_02.var_name, "input_02");
-			strcpy_s(data_02.var_type, "int_param");
-			add_global_data(data_02);
-			/*
-			VarVector_t param_vars;
-			param_vars.length = 0;
-			param_vars.vars = NULL;
-			VarVector_t input_vars;
-			input_vars.length = 0;
-			input_vars.vars = NULL;
-			*/
+			
+			// 出力値
 			VarVector_t output_vars;
 			output_vars.length = 2;
 			output_vars.vars = (VarData_t*)calloc(output_vars.length, sizeof(VarData_t));
 			strcpy_s(output_vars.vars[0].var_name, "output_01");
 			strcpy_s(output_vars.vars[0].var_type,"int_param");
 			strcpy_s(output_vars.vars[1].var_name, "output_02");
-			strcpy_s(output_vars.vars[1].var_type,"int_param");
+			strcpy_s(output_vars.vars[1].var_type,"vector_param");
 			VarData_t data_03;
 			strcpy_s(data_03.var_name, "output_01");
 			strcpy_s(data_03.var_type, "int_param");
 			add_global_data(data_03);
 			VarData_t data_04;
 			strcpy_s(data_04.var_name, "output_02");
-			strcpy_s(data_04.var_type, "int_param");
+			strcpy_s(data_04.var_type, "vector_param");
 			add_global_data(data_04);
+			
+			// 最大フレーム及び最大レイヤの更新
 			if (g_frames <= end_frame_input){
 				g_frames = end_frame_input + 1;
 			}
 			if (g_layers <= layer_input){
 				g_layers = layer_input + 1;
 			}
+
+			// クリップの追加
 			add_clip(start_frame_input, end_frame_input, layer_input, "Effect", effect_name.c_str(), effect_uuid.c_str(), param_vars, input_vars, output_vars);
 		}else if(command_input == 5){
 			if (g_cursol < g_frames-1){
@@ -349,5 +360,6 @@ void start_update(){
 		std::system("cls");
 		output_data();
 		output_clips();
+		update_global_data();
 	}
 }

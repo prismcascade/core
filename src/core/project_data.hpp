@@ -314,3 +314,5 @@ static ParameterPack vecvart2parampack (std::vector<VarData_t> var_data){
 
 }
 
+// 必要なのこっちだった
+//static ParameterPack varvect2parampack (VarVector_t var_data);
