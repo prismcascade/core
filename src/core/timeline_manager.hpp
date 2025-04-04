@@ -233,6 +233,7 @@ void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int lay
 	std::cout << new_clip << std::endl;
 }
 
+// cuiな気がする。
 void start_update(){
 	std::cout << "Start Timeline Update!!" << std::endl;
 	while (true){
@@ -285,8 +286,20 @@ void start_update(){
 			input_vars.vars = NULL;
 			*/
 			VarVector_t output_vars;
-			output_vars.length = 0;
-			output_vars.vars = NULL;
+			output_vars.length = 2;
+			output_vars.vars = (VarData_t*)calloc(output_vars.length, sizeof(VarData_t));
+			strcpy_s(output_vars.vars[0].var_name, "output_01");
+			strcpy_s(output_vars.vars[0].var_type,"int_param");
+			strcpy_s(output_vars.vars[1].var_name, "output_02");
+			strcpy_s(output_vars.vars[1].var_type,"int_param");
+			VarData_t data_03;
+			strcpy_s(data_03.var_name, "output_01");
+			strcpy_s(data_03.var_type, "int_param");
+			add_global_data(data_03);
+			VarData_t data_04;
+			strcpy_s(data_04.var_name, "output_02");
+			strcpy_s(data_04.var_type, "int_param");
+			add_global_data(data_04);
 			if (g_frames <= end_frame_input){
 				g_frames = end_frame_input + 1;
 			}
