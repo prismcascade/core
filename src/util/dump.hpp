@@ -43,7 +43,12 @@ inline void dump_parameters(const DllMemoryManager& dll_memory_manager){
             case VariableType::Float:
                 return { std::to_string(reinterpret_cast<double*>(param.value)[offset]) };
             case VariableType::Text:
-                return { reinterpret_cast<TextParam*>(param.value)[offset].buffer };
+                {
+                    const char* text_buffer = reinterpret_cast<TextParam*>(param.value)[offset].buffer;
+                    if(text_buffer)
+                        return { text_buffer };
+                    return "";
+                }
             case VariableType::Vector:
             {
                 // vector の vector には，今のところ非対応

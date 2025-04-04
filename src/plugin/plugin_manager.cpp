@@ -304,7 +304,11 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
                 *reinterpret_cast<double*>(dst.value) = *reinterpret_cast<double*>(src.value);
             break;
             case VariableType::Text:
-                dll_memory_manager.copy_text(reinterpret_cast<TextParam*>(dst.value), reinterpret_cast<TextParam*>(src.value));
+                if(reinterpret_cast<TextParam*>(src.value)->buffer){
+                    dll_memory_manager.copy_text(reinterpret_cast<TextParam*>(dst.value), reinterpret_cast<TextParam*>(src.value));
+                } else {
+                    dll_memory_manager.assign_text(reinterpret_cast<TextParam*>(dst.value), "");
+                }
             break;
             case VariableType::Vector:
                 dll_memory_manager.copy_vector(reinterpret_cast<VectorParam*>(dst.value), reinterpret_cast<VectorParam*>(src.value));

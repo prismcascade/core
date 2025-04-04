@@ -29,15 +29,16 @@ EXPORT bool API_CALL getMetaInfo(
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
     bool(*add_required_handler)(void* host_handler, std::int64_t plugin_handler, const char* effect_name),
     bool(*add_handleable_effect)(void* host_handler, std::int64_t plugin_handler, const char* effect_name)) {
-        allocate_param(host_handler, plugin_handler, false, VariableType::Int, "入力");
-        allocate_param(host_handler, plugin_handler, true,  VariableType::Vector, "ベクタ出力", VariableType::Int);
-        allocate_param(host_handler, plugin_handler, true,  VariableType::Int, "出力");
-        allocate_param(host_handler, plugin_handler, true,  VariableType::Text, "文字出力");
+        allocate_param(host_handler, plugin_handler, false, VariableType::Vector, "ベクター入力", VariableType::Int);
+        allocate_param(host_handler, plugin_handler, false, VariableType::Text, "文字列入力");
+        allocate_param(host_handler, plugin_handler, false, VariableType::Int, "ついでに足す値");
+        allocate_param(host_handler, plugin_handler, true, VariableType::Int, "合計出力（数字）");
+        allocate_param(host_handler, plugin_handler, true,  VariableType::Text, "合計出力（文字）");
         add_handleable_effect(host_handler, plugin_handler, "twice_effect");
         metadata->protocol_version = 1;
         metadata->type = PluginType::Effect;
-        assign_text(host_handler, &metadata->uuid, "f0000000-0000-0000-0000-000000000000");
-        assign_text(host_handler, &metadata->name, "The greatest twice plugin");
+        assign_text(host_handler, &metadata->uuid, "f0000000-0000-0000-0000-000000000004");
+        assign_text(host_handler, &metadata->name, "The world-class counting plugin");
     return true;
 }
 
@@ -66,7 +67,6 @@ EXPORT bool API_CALL onStartRendering(
     bool(*allocate_vector)(void* host_handler, VectorParam* buffer, int size),
     bool(*allocate_video)(void* host_handler, VideoFrame* buffer,  VideoMetaData metadata),
     bool(*allocate_audio)(void* host_handler, AudioParam* buffer /* TODO: 必要なパラメータを考える */)) {
-        allocate_vector(host_handler, reinterpret_cast<VectorParam*>(output->parameters[0].value), 3);
     // Do Nothing
     return true;
 }
@@ -87,33 +87,36 @@ EXPORT bool API_CALL renderFrame(
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text)) {
         // 一応確認
-        assert(input->size == 1);
-        Parameter input_num = input->parameters[0];
-        assert(input_num.type == VariableType::Int);
+        assert(input->size == 3);
+        Parameter input_vector_param = input->parameters[0];
+        assert(input_vector_param.type == VariableType::Vector);
+        Parameter input_text_param = input->parameters[1];
+        assert(input_text_param.type == VariableType::Text);
+        Parameter input_int_param = input->parameters[2];
+        assert(input_int_param.type == VariableType::Int);
 
-        assert(output->size == 3);
-        Parameter output_vec = output->parameters[0];
-        assert(output_vec.type == VariableType::Vector);
-        Parameter output_num = output->parameters[1];
-        assert(output_num.type == VariableType::Int);
-        Parameter output_text = output->parameters[2];
-        assert(output_text.type == VariableType::Text);
+        assert(output->size == 2);
+        Parameter output_int_param = output->parameters[0];
+        assert(output_int_param.type == VariableType::Int);
+        Parameter output_text_param = output->parameters[1];
+        assert(output_text_param.type == VariableType::Text);
 
-		// 入力を取得
-        int input_int = *reinterpret_cast<int*>(input_num.value);
+		// 入出力を取得
+        VectorParam input_vector  = *reinterpret_cast<VectorParam*>(input_vector_param.value);
+        TextParam   input_text    = *reinterpret_cast<TextParam*>  (input_text_param.value);
+        int         input_int     = *reinterpret_cast<int*>        (input_int_param.value);
+        int&        output_int    = *reinterpret_cast<int*>        (output_int_param.value);
+        TextParam&  output_text   = *reinterpret_cast<TextParam*>  (output_text_param.value);
 
-        // 3, 4, 5 倍
-        VectorParam* output_vec_ptr = reinterpret_cast<VectorParam*>(output_vec.value);
-		assert(output_vec_ptr->type == VariableType::Int);
-        for(int i=0; i<output_vec_ptr->size; ++i){
-            reinterpret_cast<int*>(output_vec_ptr->buffer)[i] = input_int * (i + 3);
-        }
+        const std::string input_text_string(input_text.buffer);
 
-        // 2倍して返すだけ
-        *reinterpret_cast<int*>(output_num.value) = input_int * 2;
+        // 計算
+        output_int = input_vector.size + input_text_string.size() + input_int;
 
-        // 文字列では10倍して返す
-        assign_text(host_handler, reinterpret_cast<TextParam*>(output_text.value), std::to_string(input_int*10).c_str());
+        std::string result_text =
+            std::to_string(input_vector.size) + " + " + std::to_string(input_text_string.size()) + " + " + std::to_string(input_int)
+            + " = " + std::to_string(output_int);
+        assign_text(host_handler, reinterpret_cast<TextParam*>(&output_text), result_text.c_str());
 
     return true;
 }
