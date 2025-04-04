@@ -8,6 +8,7 @@
 #include <plugin/dynamic_library.hpp>
 #include <plugin/plugin_manager.hpp>
 #include <core/project_data.hpp>
+#include <core/timeline_manager.hpp>
 #include <memory/memory_manager.hpp>
 #include <render/rendering_scheduler.hpp>
 #include <util/dump.hpp>
@@ -20,13 +21,19 @@ int main(){
     PluginManager plugin_manager;
     dump_plugins(plugin_manager.dll_memory_manager);
 
+    start_update();
+
 	std::cout << "----------------" << std::endl;
+
+    std::cout << "[Debug 00]" << std::endl;
 
     // とりあえず最初に読み込めたUUIDを取る
     const std::string sample_target_uuid = plugin_manager.dll_memory_manager.plugin_uuid_to_handler.begin()->first;
     const std::string sample_target_uuid2 = (++plugin_manager.dll_memory_manager.plugin_uuid_to_handler.begin())->first;
     std::shared_ptr<AstNode> child = plugin_manager.make_node(sample_target_uuid);
     std::shared_ptr<AstNode> root = plugin_manager.make_node(sample_target_uuid2);
+
+    std::cout << "[Debug 01]" << std::endl;
 
     // 入力のセット
     plugin_manager.assign_input(root, 0, child);
@@ -36,6 +43,8 @@ int main(){
     plugin_manager.invoke_start_rendering(child);
     // 呼ぶ
     bool ok_child = plugin_manager.invoke_render_frame(child, 7);
+
+    std::cout << "[Debug 02]" << std::endl;
 
     // 完了
     plugin_manager.invoke_finish_rendering(child);
@@ -47,6 +56,8 @@ int main(){
 
 	////////////////
 	//root->input_params = child->output_params;
+
+    std::cout << "[Debug 03]" << std::endl;
 
     // 準備
     plugin_manager.invoke_start_rendering(root);
@@ -64,4 +75,5 @@ int main(){
 
     std::cout << "[Finished]" << std::endl << std::endl;
 
+    
 }
