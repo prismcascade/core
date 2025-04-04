@@ -170,10 +170,10 @@ extern "C" {
 		int int_param;
 		bool bool_param;
 		float float_param;
-		//TextParam text_param;
-		//VectorParam vector_param;
-		//VectorParam video_param;
-		//AudioParam audio_param;
+		struct TextParam* text_param;
+		struct VectorParam* vector_param;
+		struct VectorParam* video_param;
+		struct AudioParam* audio_param;
 	}VarUnion_t;
 
 	typedef struct VarData{
@@ -272,4 +272,44 @@ extern "C" {
 	*/
 }
 
+// yukatayu記述部分とchekegirl記述部分の間を取り持つ関数
+static ParameterPack vecvart2parampack (std::vector<VarData_t> var_data){
+	ParameterPack param_pack;
+	int param_size = var_data.size();
+	param_pack.size = param_size;
+	param_pack.parameters = (Parameter*)calloc(param_size, sizeof(Parameter));
+	for (int i=0; i<param_size; i++){
+		if(strcmp(var_data[i].var_type, "int_param")){
+			param_pack.parameters[i].type = VariableType::Int;
+			param_pack.parameters[i].value = var_data[i].var_union.int_param;
+		}
+		if(strcmp(var_data[i].var_type, "bool_param")){
+			param_pack.parameters[i].type = VariableType::Bool;
+			param_pack.parameters[i].value = var_data[i].var_union.bool_param;
+		}
+		if(strcmp(var_data[i].var_type, "float_param")){
+			param_pack.parameters[i].type = VariableType::Float;
+			param_pack.parameters[i].value = var_data[i].var_union.float_param;
+		}
+		if(strcmp(var_data[i].var_type, "text_param")){
+			param_pack.parameters[i].type = VariableType::Text;
+			param_pack.parameters[i].value = var_data[i].var_union.text_param;
+		}
+		if(strcmp(var_data[i].var_type, "vector_param")){
+			param_pack.parameters[i].type = VariableType::Vector;
+			param_pack.parameters[i].value = var_data[i].var_union.vector_param;
+		}
+		if(strcmp(var_data[i].var_type, "video_param")){
+			param_pack.parameters[i].type = VariableType::Video;
+			param_pack.parameters[i].value = var_data[i].var_union.video_param;
+		}
+		if(strcmp(var_data[i].var_type, "audio_param")){
+			param_pack.parameters[i].type = VariableType::Audio;
+			param_pack.parameters[i].value = var_data[i].var_union.audio_param;
+		}
+	}
+	return param_pack;
 }
+
+}
+

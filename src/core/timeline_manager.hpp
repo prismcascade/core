@@ -24,6 +24,11 @@ using namespace PrismCascade;
 #include <string.h>
 #include <stdlib.h>
 #include <core/project_data.hpp>
+#include <plugin/dynamic_library.hpp>
+#include <plugin/plugin_manager.hpp>
+#include <memory/memory_manager.hpp>
+#include <render/rendering_scheduler.hpp>
+#include <util/dump.hpp>
 
 #define TYPE_NAME_SIZE 256
 
@@ -236,7 +241,10 @@ void add_clip(unsigned int start_frame, unsigned int end_frame, unsigned int lay
 // cuiな気がする。
 void start_update(){
 	std::cout << "Start Timeline Update!!" << std::endl;
+	PluginManager plugin_manager;
 	while (true){
+		dump_plugins(plugin_manager.dll_memory_manager);
+		std::cout << "-------------------------------------------------------------------------------" << std::endl;
 		std::cout << "Command : " << std::endl << "0:end  1:add  2:delete  3:move  4:flex  5:cursol_right  6:cursol_left  7:add_global_data" << std::endl;
 		int command_input;
 		std::cin >> command_input;
