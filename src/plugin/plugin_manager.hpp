@@ -6,6 +6,7 @@
 #include <render/rendering_scheduler.hpp>
 #include <string>
 #include <optional>
+#include <unordered_set>
 #include <map>
 
 namespace PrismCascade {
@@ -53,6 +54,8 @@ private:
     std::vector<VariableType> infer_input_type(const AstNode::input_t& input_value);
     void remove_old_references(const AstNode::input_t& old_value, std::shared_ptr<AstNode> node);
     void add_new_references(const AstNode::input_t& new_value, std::shared_ptr<AstNode> node);
+    void gather_subtree_nodes(std::shared_ptr<AstNode> start, std::unordered_set<std::shared_ptr<AstNode>>& visited);
+    void remove_subtree_boundary_references(const std::unordered_set<std::shared_ptr<AstNode>>& subtree_set);
 
     // std::map<std::string, PluginHandle> plugins;
     // std::map<std::string, EffectHandler*> effectRegistry;

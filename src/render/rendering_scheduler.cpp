@@ -16,7 +16,6 @@ namespace {
         auto link = [&](std::int64_t parent_handler, std::int64_t child_handler){
             depended_by[child_handler].push_back(parent_handler);
             ++in_degrees[parent_handler];
-            std::cerr << "link: " << parent_handler << " -> " << child_handler << std::endl;
         };
         if(!node) return;
         if(nodes.count(node->plugin_instance_handler)) return;

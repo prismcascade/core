@@ -1,5 +1,6 @@
 #include "plugin_manager.hpp"
 #include <cassert>
+#include <algorithm>
 
 namespace PrismCascade {
 
@@ -127,6 +128,99 @@ std::vector<VariableType> PluginManager::infer_input_type(const AstNode::input_t
     return inferred_type;
 }
 
+void PluginManager::gather_subtree_nodes(std::shared_ptr<AstNode> start, std::unordered_set<std::shared_ptr<AstNode>>& visited){
+    if(!start) return;
+    if(visited.count(start) > 0) return;
+    visited.insert(start);
+
+    for(std::size_t i = 0; i < start->children.size(); ++i){
+        const auto& val = start->children[i];
+        if(std::holds_alternative<std::shared_ptr<AstNode>>(val)){
+            // 共有ポインタで結ばれた子ノードをたどる(下方向のみ)
+            auto child_node = std::get<std::shared_ptr<AstNode>>(val);
+            gather_subtree_nodes(child_node, visited);
+        }
+        // sub_edge はサブツリー判定には使えないので無視 (そもそも無限ループの可能性がありますからね)
+    }
+}
+
+// subtree_set に含まれるノードについて、
+// * 「サブツリー内 → サブツリー外」「サブツリー外 → サブツリー内」の親リンクや sub_edge を解除する。
+// * サブツリー内部を壊さずに外部との接続だけ切り離し，サブツリーを独立させる。
+void PluginManager::remove_subtree_boundary_references(const std::unordered_set<std::shared_ptr<AstNode>>& subtree_set){
+    for(auto&& n : subtree_set){
+        std::cerr << "start: " << n->plugin_instance_handler << std::endl;
+        // 1) 親リンク (n->parent)
+        if(auto p = n->parent.lock()){
+            // p が subtree_set に含まれない = サブツリー外ノード
+            if(!subtree_set.count(p)){
+                // 親リンクをリセット
+                n->parent.reset();
+                std::cerr << "reset parent: " << n->plugin_instance_handler << std::endl;
+            }
+        }
+
+        // 2) children の SubEdge
+        for(int i=0; i<(int)n->children.size(); ++i){
+            auto& val = n->children[i];
+            if(std::holds_alternative<AstNode::SubEdge>(val)){
+                auto sub_edge = std::get<AstNode::SubEdge>(val);
+                auto src = sub_edge.from_node.lock();
+                if(src){
+                    bool n_in_subtree   = (subtree_set.count(n)   > 0); // ほぼ true
+                    bool src_in_subtree = (subtree_set.count(src) > 0);
+                    // サブツリーの内外が異なるなら境界をまたぐ
+                    if(n_in_subtree != src_in_subtree){
+                        // sub_edge を削除する
+                        // 例: n->children[i] = AstNode::make_empty_value({VariableType::Int});
+                        n->children[i] = AstNode::make_empty_value({VariableType::Int});
+                    }
+                }
+            }
+        }
+
+        // 3) sub_output_destinations
+        //   n が from_node になっている副出力先ノードを列挙する
+        //   もしその先(to_node) がサブツリー外なら削除する
+        {
+            auto& dest_list = n->sub_output_destinations;
+            auto check_cross_tree = [&](const std::weak_ptr<AstNode>& ast_weak){
+                auto to_node = ast_weak.lock();
+                if(!to_node) return true; // expired anyway
+                // 片方がサブツリー内，もう片方がサブツリー外なら解除
+                bool n_in_subtree   = (subtree_set.count(n)      > 0);
+                bool to_in_subtree  = (subtree_set.count(to_node) > 0);
+                return (n_in_subtree != to_in_subtree);
+            };
+            // TODO: 変数名を適宜変える (n -> sub_tree_root)
+            for(const std::weak_ptr<AstNode>& sub_output_destination_weak : dest_list){
+                if(check_cross_tree(sub_output_destination_weak)){
+                    if(auto sub_output_destination = sub_output_destination_weak.lock()){
+                        // dest->children を走査して，sub_edge.from_node == n の箇所を置き換える
+                        // parameter_type_informations の情報を使うには plugin_handler 等を取得する
+                        for(std::size_t i = 0; i < sub_output_destination->children.size(); ++i){
+                            auto& destination_parameter = sub_output_destination->children[i];
+                            if(std::holds_alternative<AstNode::SubEdge>(destination_parameter)){
+                                auto& destination_sub_edge = std::get<AstNode::SubEdge>(destination_parameter);
+                                if(destination_sub_edge.from_node.lock() == n){
+                                    // [plugin_handler] の input の [i] から型情報を参照してデフォルト値を作る
+                                    const auto& type_info_destination = dll_memory_manager.parameter_type_informations.at(sub_output_destination->plugin_handler);
+                                    const auto& [param_name, param_types] = type_info_destination[0].at(i);
+                                    AstNode::input_t empty_v = AstNode::make_empty_value(param_types);
+
+                                    // 本来は assign_input(dest, i, empty_v); が筋だが，型検査は済んでいるので直接書き換える
+                                    destination_parameter = empty_v;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            dest_list.erase(std::remove_if(dest_list.begin(), dest_list.end(), check_cross_tree), dest_list.end());
+        }
+    }
+}
+
 void PluginManager::remove_old_references(const AstNode::input_t& old_value, std::shared_ptr<AstNode> node){
     if(std::holds_alternative<AstNode::SubEdge>(old_value)){
         const auto& old_edge = std::get<AstNode::SubEdge>(old_value);
@@ -144,36 +238,12 @@ void PluginManager::remove_old_references(const AstNode::input_t& old_value, std
                 if(p == node){
                     // 親子関係を解除
                     old_child->parent.reset();
-
-                    // old_child->sub_output_destination に入っているノードは
-                    // この old_child を from_node としている sub_edge を持っている
-                    for(auto&& sub_output_destination_weak : old_child->sub_output_destinations){
-                        if(auto sub_output_destination = sub_output_destination_weak.lock()){
-                            // dest->children を走査して，sub_edge.from_node == old_child の箇所を置き換える
-                            // parameter_type_informations の情報を使うには plugin_handler 等を取得する
-                            for(std::size_t i = 0; i < sub_output_destination->children.size(); ++i){
-                                auto& destination_parameter = sub_output_destination->children[i];
-                                if(std::holds_alternative<AstNode::SubEdge>(destination_parameter)){
-                                    auto& destination_sub_edge = std::get<AstNode::SubEdge>(destination_parameter);
-                                    if(destination_sub_edge.from_node.lock() == old_child){
-                                        // デフォルト値を作る
-                                        // [plugin_handler] の input の [i] から型情報を参照
-                                        const auto& type_info_destination = dll_memory_manager.parameter_type_informations.at(sub_output_destination->plugin_handler);
-                                        const auto& [param_name, param_types] = type_info_destination[0].at(i);
-                                        AstNode::input_t empty_v = AstNode::make_empty_value(param_types);
-
-                                        // 本来は assign_input(dest, i, empty_v); が筋だが，型検査は済んでいるので直接書き換える
-                                        destination_parameter = empty_v;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // sub_edge を消し終わったのでクリア
-                    old_child->sub_output_destinations.clear();
                 }
             }
+            std::unordered_set<std::shared_ptr<AstNode>> subtree_set;
+            gather_subtree_nodes(old_child, subtree_set);
+            // subツリー と 親ツリーの間の SubEdge を解除
+            remove_subtree_boundary_references(subtree_set);
         }
     }
 }
@@ -181,9 +251,8 @@ void PluginManager::remove_old_references(const AstNode::input_t& old_value, std
 void PluginManager::add_new_references(const AstNode::input_t& new_value, std::shared_ptr<AstNode> node){
     if(std::holds_alternative<AstNode::SubEdge>(new_value)){
         const auto& new_edge = std::get<AstNode::SubEdge>(new_value);
-        if(std::shared_ptr<AstNode> new_edge_source = new_edge.from_node.lock()){
+        if(std::shared_ptr<AstNode> new_edge_source = new_edge.from_node.lock())
             new_edge_source->sub_output_destinations.push_back(node);
-        }
     } else if(std::holds_alternative<std::shared_ptr<AstNode>>(new_value)){
         std::shared_ptr<AstNode> new_child = std::get<std::shared_ptr<AstNode>>(new_value);
         if(new_child){
@@ -304,11 +373,10 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
                 *reinterpret_cast<double*>(dst.value) = *reinterpret_cast<double*>(src.value);
             break;
             case VariableType::Text:
-                if(reinterpret_cast<TextParam*>(src.value)->buffer){
+                if(reinterpret_cast<TextParam*>(src.value)->buffer)
                     dll_memory_manager.copy_text(reinterpret_cast<TextParam*>(dst.value), reinterpret_cast<TextParam*>(src.value));
-                } else {
+                else
                     dll_memory_manager.assign_text(reinterpret_cast<TextParam*>(dst.value), "");
-                }
             break;
             case VariableType::Vector:
                 dll_memory_manager.copy_vector(reinterpret_cast<VectorParam*>(dst.value), reinterpret_cast<VectorParam*>(src.value));

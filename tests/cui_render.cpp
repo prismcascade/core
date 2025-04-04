@@ -86,10 +86,12 @@ int main(){
         std::cout << "----------------" << std::endl;
 
         plugin_manager.assign_input(new_root, 2, 12);
-        run(root, 1);
+        run(root, 2);
     }
 
 	std::cout << "----------------" << std::endl;
+
+    std::cout << " -------- [完了！！] --------" << std::endl;
 
     // TODO: 値を付け替える
 

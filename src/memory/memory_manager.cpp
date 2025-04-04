@@ -2,6 +2,8 @@
 #include <cassert>
 #include <stdexcept>
 #include <stdarg.h>
+#include <map>
+#include <unordered_map>
 
 namespace PrismCascade {
 
@@ -304,6 +306,110 @@ namespace PrismCascade {
     void DllMemoryManager::free_audio(AudioParam* buffer){
         std::lock_guard<std::mutex> lock{ mutex_ };
         audio_instances.erase(buffer);
+    }
+
+    // -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+
+    void DllMemoryManager::dumpMemoryUsage()
+    {
+        std::lock_guard<std::mutex> lock{ mutex_ };
+
+        std::cerr << "========== [DllMemoryManager Memory Usage] ==========" << std::endl;
+
+        // 1) Text
+        //    text_instances: TextParam* -> shared_ptr<std::string>
+        //    同一shared_ptrを複数キーが指している可能性があるので、setでunique化
+        {
+            std::unordered_map<std::shared_ptr<std::string>, int> textRefCount;
+            for(auto&& kv : text_instances){
+                auto sp = kv.second; 
+                textRefCount[sp]++; // counting how many param keys reference the same sp
+            }
+            std::size_t distinctCount = textRefCount.size();
+            std::size_t totalCharCount = 0;
+            for(auto&& [spStr, refCount] : textRefCount){
+                totalCharCount += spStr->size();
+            }
+            std::cerr << "[Text]  Distinct=" << distinctCount 
+                      << "  totalCharCount=" << totalCharCount 
+                      << "  (some might share the same std::string)\n";
+        }
+
+        // 2) VectorParam
+        //    vector_instances: VectorParam* -> shared_ptr<void>
+        //    どの型かによってメモリサイズが異なるが、ここでは "size * sizeof(type)" 程度を推定することも可能
+        //    ただし internal type (Int/Bool/Float/...) は VectorParam.type で判定
+        {
+            // distinctResources: sp<void> -> (estimated_bytes, count)
+            std::unordered_map<std::shared_ptr<void>, std::pair<std::size_t,int>> distinctVector;
+            for(auto&& kv : vector_instances){
+                VectorParam* vparam = kv.first;
+                std::shared_ptr<void> sp = kv.second;
+                auto it = distinctVector.find(sp);
+                if(it == distinctVector.end()){
+                    // estimate memory
+                    std::size_t bytes = 0;
+                    switch(vparam->type){
+                        case VariableType::Int:   bytes = vparam->size * sizeof(int); break;
+                        case VariableType::Bool:  bytes = vparam->size * sizeof(bool); break;
+                        case VariableType::Float: bytes = vparam->size * sizeof(double); break;
+                        case VariableType::Text:  bytes = vparam->size * sizeof(TextParam); break; 
+                        case VariableType::Video: bytes = vparam->size * sizeof(VideoFrame); break;
+                        case VariableType::Audio: bytes = vparam->size * sizeof(AudioParam); break;
+                        default: break; 
+                    }
+                    distinctVector[sp] = { bytes, 1 };
+                } else {
+                    // increment refCount
+                    it->second.second++;
+                }
+            }
+            std::size_t totalDistinct = distinctVector.size();
+            std::size_t sumBytes = 0;
+            for(auto&& [sp, info] : distinctVector){
+                sumBytes += info.first; 
+            }
+            std::cerr << "[VectorParam] Distinct=" << totalDistinct 
+                      << ", totalEstimatedBytes=" << sumBytes 
+                      << " (some might share the same buffer)\n";
+        }
+
+        // 3) VideoFrame
+        //    video_instances: VideoFrame* -> shared_ptr<std::vector<uint8_t>>
+        //    *We can sum up the .size() of each distinct std::vector
+        {
+            std::unordered_map<std::shared_ptr<std::vector<std::uint8_t>>, int> distinctVideo;
+            std::size_t totalBytes = 0;
+            for(auto&& kv : video_instances){
+                auto sp = kv.second;
+                distinctVideo[sp]++;
+            }
+            for(auto&& [spVec, refCount] : distinctVideo){
+                totalBytes += spVec->size();
+            }
+            std::cerr << "[VideoFrame] Distinct=" << distinctVideo.size()
+                      << ", totalByteSize=" << totalBytes
+                      << " (some might share the same std::vector)\n";
+        }
+
+        // 4) AudioParam
+        //    audio_instances: AudioParam* -> shared_ptr<std::vector<double>>
+        //    sum up the .size() * sizeof(double) of each distinct
+        {
+            std::unordered_map<std::shared_ptr<std::vector<double>>, int> distinctAudio;
+            std::size_t totalBytes = 0;
+            for(auto&& kv : audio_instances){
+                distinctAudio[kv.second]++;
+            }
+            for(auto&& [spVec, refCount] : distinctAudio){
+                totalBytes += spVec->size() * sizeof(double);
+            }
+            std::cerr << "[AudioParam] Distinct=" << distinctAudio.size()
+                      << ", totalByteSize=" << totalBytes
+                      << " (some might share the same std::vector)\n";
+        }
+    
+        std::cerr << "=====================================================" << std::endl;
     }
 
 }
