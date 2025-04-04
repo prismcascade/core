@@ -8,7 +8,6 @@
 #include <plugin/dynamic_library.hpp>
 #include <plugin/plugin_manager.hpp>
 #include <core/project_data.hpp>
-#include <core/timeline_manager.hpp>
 #include <memory/memory_manager.hpp>
 #include <render/rendering_scheduler.hpp>
 #include <util/dump.hpp>
@@ -21,59 +20,77 @@ int main(){
     PluginManager plugin_manager;
     dump_plugins(plugin_manager.dll_memory_manager);
 
-    start_update();
+    auto run = [&](std::shared_ptr<AstNode> root, int debug_level = 2){
+        auto&& [sorted_ast, nodes_in_cycles] = RenderingScheduler::topological_sort(root);
+
+        for(auto&& node : sorted_ast){
+            std::cerr << "sorted: (" << node->plugin_instance_handler << ") " << node->plugin_name << std::endl;
+        }
+        for(auto&& node : nodes_in_cycles){
+            std::cerr << "cycle: (" << node->plugin_instance_handler << ") " << node->plugin_name << std::endl;
+        }
+
+        assert(nodes_in_cycles.size() == 0);
+
+        // 準備
+        for(auto&& node : sorted_ast)
+            plugin_manager.invoke_start_rendering(node);
+
+        // 呼ぶ
+        for(auto&& node : sorted_ast){
+            bool ok = plugin_manager.invoke_render_frame(node, 7);
+            // 結果の表示
+            std::cout << node->plugin_name << ": " << (ok ? "OK" : "Failed") << std::endl;
+            if(debug_level > 1)
+                dump_parameters(plugin_manager.dll_memory_manager);
+        }
+
+        // 完了
+        for(auto&& node : sorted_ast)
+            plugin_manager.invoke_finish_rendering(node);
+
+        std::cout << " -------- [Finished] --------" << std::endl;
+
+        // 値のダンプ
+        if(debug_level > 0)
+            dump_parameters(plugin_manager.dll_memory_manager);
+    };
+
+    ////////////////
+
+    const std::string twice_plugin_uuid = "f0000000-0000-0000-0000-000000000000";
+    const std::string   sum_plugin_uuid = "f0000000-0000-0000-0000-000000000002";
+    const std::string count_plugin_uuid = "f0000000-0000-0000-0000-000000000004";
 
 	std::cout << "----------------" << std::endl;
 
-    std::cout << "[Debug 00]" << std::endl;
-
-    // とりあえず最初に読み込めたUUIDを取る
-    const std::string sample_target_uuid = plugin_manager.dll_memory_manager.plugin_uuid_to_handler.begin()->first;
-    const std::string sample_target_uuid2 = (++plugin_manager.dll_memory_manager.plugin_uuid_to_handler.begin())->first;
-    std::shared_ptr<AstNode> child = plugin_manager.make_node(sample_target_uuid);
-    std::shared_ptr<AstNode> root = plugin_manager.make_node(sample_target_uuid2);
-
-    std::cout << "[Debug 01]" << std::endl;
+    std::shared_ptr<AstNode> root = plugin_manager.make_node(sum_plugin_uuid);
 
     // 入力のセット
-    plugin_manager.assign_input(root, 0, child);
-    plugin_manager.assign_input(child, 0, 25);
+    {
+        std::shared_ptr<AstNode> child = plugin_manager.make_node(twice_plugin_uuid);
+        plugin_manager.assign_input(root, 0, child);
+        plugin_manager.assign_input(child, 0, 25);
+        run(root, 0);
 
-    // 準備
-    plugin_manager.invoke_start_rendering(child);
-    // 呼ぶ
-    bool ok_child = plugin_manager.invoke_render_frame(child, 7);
+        std::cout << "----------------" << std::endl;
 
-    std::cout << "[Debug 02]" << std::endl;
+        // count_plugin に繋げる
+        std::shared_ptr<AstNode> new_root = plugin_manager.make_node(count_plugin_uuid);
+        plugin_manager.assign_input(new_root, 1, AstNode::SubEdge{child, 2});
+        plugin_manager.assign_input(new_root, 2, root);
+        auto old_root = root;
+        root = new_root;
+        run(root, 1);
 
-    // 完了
-    plugin_manager.invoke_finish_rendering(child);
+        std::cout << "----------------" << std::endl;
 
-    // 値のダンプ
-    dump_parameters(plugin_manager.dll_memory_manager);
+        plugin_manager.assign_input(new_root, 2, 12);
+        run(root, 1);
+    }
 
-	std::cout << "  v v v v v v v v" << std::endl;
+	std::cout << "----------------" << std::endl;
 
-	////////////////
-	//root->input_params = child->output_params;
+    // TODO: 値を付け替える
 
-    std::cout << "[Debug 03]" << std::endl;
-
-    // 準備
-    plugin_manager.invoke_start_rendering(root);
-    // 呼ぶ
-    bool ok_root = plugin_manager.invoke_render_frame(root, 7);
-
-    //int result = *reinterpret_cast<int*>(plugin_manager.dll_memory_manager.parameter_pack_instances.at(root->plugin_instance_handler).second[true].first->value);
-    //std::cout << result << std::endl;
-
-    // 完了
-    plugin_manager.invoke_finish_rendering(root);
-
-    // 値のダンプ
-    dump_parameters(plugin_manager.dll_memory_manager);
-
-    std::cout << "[Finished]" << std::endl << std::endl;
-
-    
 }

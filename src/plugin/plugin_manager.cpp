@@ -100,7 +100,7 @@ void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNo
         // 子ノードの親を更新
         if(std::shared_ptr<AstNode> old_parent = sub_function->parent.lock()){
             // 古い親から外し，デフォルト値を入れる
-            for(std::size_t i = 0; i < old_parent->children.size(); ++i){
+            for(int i = 0; i < static_cast<int>(old_parent->children.size()); ++i){
                 const auto& old_parent_child = old_parent->children[i];
                 if(std::holds_alternative<std::shared_ptr<AstNode>>(old_parent_child)
                 && std::get<std::shared_ptr<AstNode>>(old_parent_child) == sub_function){
@@ -140,6 +140,7 @@ void PluginManager::assign_input(std::shared_ptr<AstNode> node, int index, AstNo
             return false;
         return true;
     }()){
+        // subedge
         // make_node でアロケーション済みのはずなので，基本的には at でエラーは出ないはず
         node->children.at(index) = input_value;
     } else
@@ -262,7 +263,7 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
         } else if(std::holds_alternative<std::string>(child)) {
             const auto value = std::get<std::string>(child);
             assert(input_parameter.type == VariableType::Text);
-            *reinterpret_cast<std::string*>(input_parameter.value) = value.c_str();
+            dll_memory_manager.assign_text(reinterpret_cast<TextParam*>(input_parameter.value), value.c_str());
         } else if(std::holds_alternative<std::shared_ptr<AstNode>>(child)) {
             // 子が先に呼ばれている前提
             std::shared_ptr<AstNode> sub_function = std::get<std::shared_ptr<AstNode>>(child);
