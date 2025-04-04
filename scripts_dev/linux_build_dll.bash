@@ -11,15 +11,15 @@ cp src/core/project_data.hpp dll_build/
 
 pushd dll_build
 
-clang++ -std=c++20 -O2 -g -shared twice_plugin.cpp -o debug_twice_plugin.so && \
+clang++ -std=c++20 -fPIC -O2 -g -shared twice_plugin.cpp -o debug_twice_plugin.so && \
 mkdir -p ../build/tests/plugins && \
 cp debug_twice_plugin.so ../build/tests/plugins/
 
-clang++ -std=c++20 -O2 -g -shared sum_plugin.cpp -o debug_sum_plugin.so && \
+clang++ -std=c++20 -fPIC -O2 -g -shared sum_plugin.cpp -o debug_sum_plugin.so && \
 mkdir -p ../build/tests/plugins && \
 cp debug_sum_plugin.so ../build/tests/plugins/
 
-clang++ -std=c++20 -O2 -g -shared count_plugin.cpp -o debug_count_plugin.so && \
+clang++ -std=c++20 -fPIC -O2 -g -shared count_plugin.cpp -o debug_count_plugin.so && \
 mkdir -p ../build/tests/plugins && \
 cp debug_count_plugin.so ../build/tests/plugins/
 
