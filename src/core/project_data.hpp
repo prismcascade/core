@@ -53,14 +53,14 @@ struct AudioParam {
 };
 
 struct TextParam {
-    int size = 0;
+    std::int32_t size = 0;
     const char* buffer = nullptr;
 };
 
 // TODO : 多分これをunionに入れるとエラー出る。なんとかする。
 struct VectorParam {
     VariableType type{};
-    int size = 0;
+    std::int32_t size = 0;
     void* buffer = nullptr;
 };
 
@@ -73,7 +73,7 @@ struct Parameter {
 };
 
 struct ParameterPack {
-    int size = 0;
+    std::int32_t size = 0;
     Parameter* parameters = nullptr;
 };
 
@@ -86,7 +86,7 @@ enum class PluginType {
 };
 
 struct PluginMetaData {
-    int protocol_version = 1;
+    std::int32_t protocol_version = 1;
     PluginType type;
     TextParam uuid;
     TextParam name;
@@ -98,7 +98,7 @@ std::string to_string(VariableType variable_type);
 std::string to_string(PluginType variable_type);
 
 struct PluginMetaDataInternal {
-    int protocol_version = 1;
+    std::int32_t protocol_version = 1;
     PluginType type;
     std::string uuid;
     std::string name;
@@ -110,9 +110,9 @@ struct PluginMetaDataInternal {
 struct AstNode {
 	struct SubEdge {
 		std::weak_ptr<AstNode> from_node;
-		int index = 0;
+		std::int32_t index = 0;
 	};
-	using input_t = std::variant<std::shared_ptr<AstNode>, SubEdge, int, bool, double, VectorParam, VideoFrame, AudioParam, std::string>;
+	using input_t = std::variant<std::shared_ptr<AstNode>, SubEdge, std::int64_t, bool, double, VectorParam, VideoFrame, AudioParam, std::string>;
 
 	// handler は実行ごとに変化する，勝手につけた通し番号
 	std::uint64_t plugin_handler{};
@@ -121,7 +121,7 @@ struct AstNode {
 	std::string plugin_uuid{};
 
 	// メタデータからも辿れるが，処理の途中で途中で変化しない値なので，扱いやすさのためにもコピーをここに置く
-	int protocol_version{};
+	std::int32_t protocol_version{};
 	PluginType plugin_type{};
 	std::string plugin_name{};
 

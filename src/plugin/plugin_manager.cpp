@@ -75,7 +75,7 @@ PluginManager::~PluginManager(){
 
 std::vector<VariableType> PluginManager::infer_input_type(const AstNode::input_t& input_value){
     std::vector<VariableType> inferred_type(1);
-    if(std::holds_alternative<int>(input_value)) {
+    if(std::holds_alternative<std::int64_t>(input_value)) {
         inferred_type[0] = VariableType::Int;
     } else if(std::holds_alternative<bool>(input_value)) {
         inferred_type[0] = VariableType::Bool;
@@ -114,7 +114,7 @@ std::vector<VariableType> PluginManager::infer_input_type(const AstNode::input_t
                 throw std::domain_error("[PluginManager::assign_input] target of subedge cannot be macro (for now)");
             const auto& type_info_sub = dll_memory_manager.parameter_type_informations.at(source_function->plugin_handler);
             // 0番目は主出力なので， sub_edge の参照先としては許容しない
-            if(sub_edge.index <= 0 || sub_edge.index >= static_cast<int>(type_info_sub[1].size()))
+            if(sub_edge.index <= 0 || sub_edge.index >= static_cast<std::int32_t>(type_info_sub[1].size()))
                 throw std::domain_error("[PluginManager::assign_input] index of subedge out of bounds");
             const auto& [sub_output_name, sub_output_type] = type_info_sub[1].at(sub_edge.index);
             inferred_type[0] = sub_output_type.at(0);
@@ -363,7 +363,7 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
         assert(src.type == dst.type);
         switch(src.type){
             case VariableType::Int:
-                *reinterpret_cast<int*>(dst.value) = *reinterpret_cast<int*>(src.value);
+                *reinterpret_cast<std::int64_t*>(dst.value) = *reinterpret_cast<std::int64_t*>(src.value);
             break;
             case VariableType::Bool:
                 *reinterpret_cast<bool*>(dst.value) = *reinterpret_cast<bool*>(src.value);
@@ -395,8 +395,8 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
     for(std::size_t input_index = 0; input_index < node->children.size(); ++input_index){
         const AstNode::input_t& child = node->children[input_index];
         Parameter& input_parameter = self_input_ptr.get()[input_index];
-        if(std::holds_alternative<int>(child)) {
-            const auto value = std::get<int>(child);
+        if(std::holds_alternative<std::int64_t>(child)) {
+            const auto value = std::get<std::int64_t>(child);
             assert(input_parameter.type == VariableType::Int);
             *reinterpret_cast<int*>(input_parameter.value) = value;
         } else if(std::holds_alternative<bool>(child)) {

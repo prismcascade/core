@@ -64,7 +64,7 @@ EXPORT bool API_CALL onStartRendering(
     ParameterPack* output,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
-    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, int size),
+    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, std::int64_t size),
     bool(*allocate_video)(void* host_handler, VideoFrame* buffer,  VideoMetaData metadata),
     bool(*allocate_audio)(void* host_handler, AudioParam* buffer /* TODO: 必要なパラメータを考える */)) {
     // Do Nothing
@@ -83,7 +83,7 @@ EXPORT bool API_CALL renderFrame(
     ParameterPack* output,
     const VideoMetaData estimated_video_meta_data,
     const AudioMetaData estimated_audio_meta_data,
-    int frame,
+    std::int64_t frame,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text)) {
         // 一応確認
@@ -102,11 +102,11 @@ EXPORT bool API_CALL renderFrame(
         assert(output_text_param.type == VariableType::Text);
 
 		// 入出力を取得
-        VectorParam input_vector  = *reinterpret_cast<VectorParam*>(input_vector_param.value);
-        TextParam   input_text    = *reinterpret_cast<TextParam*>  (input_text_param.value);
-        int         input_int     = *reinterpret_cast<int*>        (input_int_param.value);
-        int&        output_int    = *reinterpret_cast<int*>        (output_int_param.value);
-        TextParam&  output_text   = *reinterpret_cast<TextParam*>  (output_text_param.value);
+        VectorParam   input_vector  = *reinterpret_cast<VectorParam*> (input_vector_param.value);
+        TextParam     input_text    = *reinterpret_cast<TextParam*>   (input_text_param.value);
+        std::int64_t  input_int     = *reinterpret_cast<std::int64_t*>(input_int_param.value);
+        std::int64_t& output_int    = *reinterpret_cast<std::int64_t*>(output_int_param.value);
+        TextParam&    output_text   = *reinterpret_cast<TextParam*>   (output_text_param.value);
 
         const std::string input_text_string(input_text.buffer);
 

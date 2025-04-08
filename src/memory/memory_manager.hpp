@@ -51,8 +51,8 @@ struct DllMemoryManager {
     void free_text(TextParam* buffer);
 
     // vector は内容の解放責任を負う
-    bool allocate_vector(VectorParam* buffer, int size);
-    static bool allocate_vector_static(void* ptr, VectorParam* buffer, int size);
+    bool allocate_vector(VectorParam* buffer, std::int32_t size);
+    static bool allocate_vector_static(void* ptr, VectorParam* buffer, std::int32_t size);
     void copy_vector(VectorParam* dst, VectorParam* src);
     void free_vector(VectorParam* buffer);
 

@@ -63,7 +63,7 @@ EXPORT bool API_CALL onStartRendering(
     ParameterPack* output,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text),
-    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, int size),
+    bool(*allocate_vector)(void* host_handler, VectorParam* buffer, std::int32_t size),
     bool(*allocate_video)(void* host_handler, VideoFrame* buffer,  VideoMetaData metadata),
     bool(*allocate_audio)(void* host_handler, AudioParam* buffer /* TODO: 必要なパラメータを考える */)) {
         allocate_vector(host_handler, reinterpret_cast<VectorParam*>(output->parameters[0].value), 3);
@@ -83,7 +83,7 @@ EXPORT bool API_CALL renderFrame(
     ParameterPack* output,
     const VideoMetaData estimated_video_meta_data,
     const AudioMetaData estimated_audio_meta_data,
-    int frame,
+    std::int64_t frame,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text)) {
         // 一応確認
@@ -100,17 +100,17 @@ EXPORT bool API_CALL renderFrame(
         assert(output_text.type == VariableType::Text);
 
 		// 入力を取得
-        int input_int = *reinterpret_cast<int*>(input_num.value);
+        int input_int = *reinterpret_cast<std::int64_t*>(input_num.value);
 
         // 3, 4, 5 倍
         VectorParam* output_vec_ptr = reinterpret_cast<VectorParam*>(output_vec.value);
 		assert(output_vec_ptr->type == VariableType::Int);
         for(int i=0; i<output_vec_ptr->size; ++i){
-            reinterpret_cast<int*>(output_vec_ptr->buffer)[i] = input_int * (i + 3);
+            reinterpret_cast<std::int64_t*>(output_vec_ptr->buffer)[i] = input_int * (i + 3);
         }
 
         // 2倍して返すだけ
-        *reinterpret_cast<int*>(output_num.value) = input_int * 2;
+        *reinterpret_cast<std::int64_t*>(output_num.value) = input_int * 2;
 
         // 文字列では10倍して返す
         assign_text(host_handler, reinterpret_cast<TextParam*>(output_text.value), std::to_string(input_int*10).c_str());

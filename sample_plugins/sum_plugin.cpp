@@ -80,7 +80,7 @@ EXPORT bool API_CALL renderFrame(
     ParameterPack* output,
     const VideoMetaData estimated_video_meta_data,
     const AudioMetaData estimated_audio_meta_data,
-    int frame,
+    std::int64_t frame,
     bool(*load_video_buffer)(void* host_handler, VideoFrame* target, std::uint64_t frame),
     bool(*assign_text)(void* host_handler, TextParam* buffer, const char* text)) {
         // 一応確認
@@ -93,15 +93,15 @@ EXPORT bool API_CALL renderFrame(
         assert(output_num.type == VariableType::Int);
 
         // 合計して返す
-        int output_int = *reinterpret_cast<int*>(output_num.value);
-        *reinterpret_cast<int*>(output_num.value) = 0;
+        int output_int = *reinterpret_cast<std::int64_t*>(output_num.value);
+        *reinterpret_cast<std::int32_t*>(output_num.value) = 0;
 
         VectorParam* input_vec_ptr = reinterpret_cast<VectorParam*>(input_vec.value);
 
 		assert(input_vec_ptr->type == VariableType::Int);
         for(int i=0; i<input_vec_ptr->size; ++i){
-			*reinterpret_cast<int*>(output_num.value) +=
-				reinterpret_cast<int*>(input_vec_ptr->buffer)[i];
+			*reinterpret_cast<std::int32_t*>(output_num.value) +=
+				reinterpret_cast<std::int32_t*>(input_vec_ptr->buffer)[i];
         }
     return true;
 }

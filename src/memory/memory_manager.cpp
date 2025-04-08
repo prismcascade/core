@@ -79,7 +79,7 @@ namespace PrismCascade {
                 // NOTE: 現状では vector の入れ子がないので，typeの長さは最大 2
                 switch(type[0]){
                     case VariableType::Int:
-                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<int>());
+                        parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<std::int64_t>());
                     break;
                     case VariableType::Bool:
                         parameter_buffer = std::reinterpret_pointer_cast<void>(std::make_shared<bool>());
@@ -114,7 +114,7 @@ namespace PrismCascade {
 
             parameter_pack_instances[plugin_instance_handler].first = plugin_handler;
             parameter_pack_instances[plugin_instance_handler].second[is_output] = { parameter_pack_buffer, parameter_buffer_list };
-            params[is_output].size = static_cast<int>(parameter_type_info.size());
+            params[is_output].size = static_cast<std::int32_t>(parameter_type_info.size());
             params[is_output].parameters = parameter_pack_buffer.get();
         }
         return std::make_pair(params[0], params[1]);
@@ -131,7 +131,7 @@ namespace PrismCascade {
         auto text_buffer = std::make_shared<std::string>(text);
         text_instances[buffer] = text_buffer;
 
-        buffer->size = static_cast<int>(text_buffer->size());
+        buffer->size = static_cast<std::int32_t>(text_buffer->size());
         buffer->buffer = text_buffer->c_str();
         return true;
     }
@@ -156,7 +156,7 @@ namespace PrismCascade {
 
     namespace {
         template<class T>
-        std::shared_ptr<void> get_buffer_instance(int size){
+        std::shared_ptr<void> get_buffer_instance(std::int32_t size){
             return std::shared_ptr<void>(reinterpret_cast<void*>(new T[size]), [](void* ptr){
                 // C++20 からは shared_ptr が自動でしてくれた気がする
                 // それ以前でビルドした時にポインタに自動変換されてメモリリークしそうな気がするので，念のため自分で書いた
@@ -165,7 +165,7 @@ namespace PrismCascade {
         }
     }
 
-    bool DllMemoryManager::allocate_vector(VectorParam* buffer, int size){
+    bool DllMemoryManager::allocate_vector(VectorParam* buffer, std::int32_t size){
         std::lock_guard<std::mutex> lock{ mutex_ };
         std::shared_ptr<void> vector_buffer;
         // 型チェック
@@ -179,7 +179,7 @@ namespace PrismCascade {
         // 確保
         switch(buffer->type){
             case VariableType::Int:
-                vector_buffer = get_buffer_instance<int>(size);
+                vector_buffer = get_buffer_instance<std::int64_t>(size);
             break;
             case VariableType::Bool:
                 vector_buffer = get_buffer_instance<bool>(size);  // NOTE: 今後バッファとして std::vector を使う場合には特殊化に注意
@@ -232,7 +232,7 @@ namespace PrismCascade {
         return true;
     }
 
-    bool DllMemoryManager::allocate_vector_static(void* ptr, VectorParam* buffer,int size){
+    bool DllMemoryManager::allocate_vector_static(void* ptr, VectorParam* buffer, std::int32_t size){
         return reinterpret_cast<DllMemoryManager*>(ptr)->allocate_vector(buffer, size);
     }
 
@@ -341,7 +341,7 @@ namespace PrismCascade {
         //    ただし internal type (Int/Bool/Float/...) は VectorParam.type で判定
         {
             // distinctResources: sp<void> -> (estimated_bytes, count)
-            std::unordered_map<std::shared_ptr<void>, std::pair<std::size_t,int>> distinctVector;
+            std::unordered_map<std::shared_ptr<void>, std::pair<std::size_t,std::int32_t>> distinctVector;
             for(auto&& kv : vector_instances){
                 VectorParam* vparam = kv.first;
                 std::shared_ptr<void> sp = kv.second;
@@ -350,7 +350,7 @@ namespace PrismCascade {
                     // estimate memory
                     std::size_t bytes = 0;
                     switch(vparam->type){
-                        case VariableType::Int:   bytes = vparam->size * sizeof(int); break;
+                        case VariableType::Int:   bytes = vparam->size * sizeof(std::int64_t); break;
                         case VariableType::Bool:  bytes = vparam->size * sizeof(bool); break;
                         case VariableType::Float: bytes = vparam->size * sizeof(double); break;
                         case VariableType::Text:  bytes = vparam->size * sizeof(TextParam); break; 
@@ -396,7 +396,7 @@ namespace PrismCascade {
         //    audio_instances: AudioParam* -> shared_ptr<std::vector<double>>
         //    sum up the .size() * sizeof(double) of each distinct
         {
-            std::unordered_map<std::shared_ptr<std::vector<double>>, int> distinctAudio;
+            std::unordered_map<std::shared_ptr<std::vector<double>>, std::int32_t> distinctAudio;
             std::size_t totalBytes = 0;
             for(auto&& kv : audio_instances){
                 distinctAudio[kv.second]++;

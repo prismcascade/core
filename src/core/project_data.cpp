@@ -39,7 +39,7 @@ AstNode::input_t AstNode::make_empty_value(const std::vector<VariableType>& type
 	input_t empty_value{};
 	switch(types.at(0)){
 		case VariableType::Int:
-			empty_value.emplace<int>();
+			empty_value.emplace<std::int64_t>();
 		break;
 		case VariableType::Bool:
 			empty_value.emplace<bool>();
