@@ -16,7 +16,8 @@ public:
     // std::shared_ptr<AstNode> ast;
     // std::shared_ptr<PluginManager> manager;
 
-    static std::pair<std::vector<std::shared_ptr<AstNode>>, std::vector<std::shared_ptr<AstNode>>> topological_sort(const std::shared_ptr<AstNode>& ast_root);
+    static std::tuple<std::vector<std::shared_ptr<AstNode>>, std::vector<std::shared_ptr<AstNode>>, std::vector<std::map<std::pair<std::int64_t, std::int32_t>, std::int64_t>>>
+    topological_sort(const std::shared_ptr<AstNode>& ast_root);
 
 private:
 

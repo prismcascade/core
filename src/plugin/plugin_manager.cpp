@@ -398,7 +398,7 @@ bool PluginManager::invoke_render_frame(std::shared_ptr<AstNode> node, int frame
         if(std::holds_alternative<std::int64_t>(child)) {
             const auto value = std::get<std::int64_t>(child);
             assert(input_parameter.type == VariableType::Int);
-            *reinterpret_cast<int*>(input_parameter.value) = value;
+            *reinterpret_cast<std::int64_t*>(input_parameter.value) = value;
         } else if(std::holds_alternative<bool>(child)) {
             const auto value = std::get<bool>(child);
             assert(input_parameter.type == VariableType::Bool);

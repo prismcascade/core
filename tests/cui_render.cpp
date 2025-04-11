@@ -15,13 +15,14 @@
 
 int main(){
     using namespace PrismCascade;
+    try{
 
     // プラグインを読み込む
     PluginManager plugin_manager;
     dump_plugins(plugin_manager.dll_memory_manager);
 
     auto run = [&](std::shared_ptr<AstNode> root, int debug_level = 2){
-        auto&& [sorted_ast, nodes_in_cycles] = RenderingScheduler::topological_sort(root);
+        auto&& [sorted_ast, nodes_in_cycles, variable_lifetime_differences] = RenderingScheduler::topological_sort(root);
 
         for(auto&& node : sorted_ast){
             std::cerr << "sorted: (" << node->plugin_instance_handler << ") " << node->plugin_name << std::endl;
@@ -29,6 +30,15 @@ int main(){
         for(auto&& node : nodes_in_cycles){
             std::cerr << "cycle: (" << node->plugin_instance_handler << ") " << node->plugin_name << std::endl;
         }
+        std::cerr << "memory lifetime: (" << std::endl;
+        for(auto&& variable_diff_map : variable_lifetime_differences){
+            for(auto&& [target_variable, variable_diff] : variable_diff_map){
+                auto&& [child_instance_id, output_index] = target_variable;
+                std::cerr << "    " << child_instance_id << "[" << output_index << "]: " << variable_diff << std::endl;
+            }
+            std::cerr << "  --------" << std::endl;
+        }
+        std::cerr << ")" << std::endl;
 
         assert(nodes_in_cycles.size() == 0);
 
@@ -98,4 +108,7 @@ int main(){
 
     // TODO: 値を付け替える
 
+    }catch(const std::exception& e){
+        std::cerr << e.what() << std::endl;
+    }
 }
