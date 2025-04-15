@@ -93,7 +93,7 @@ EXPORT bool API_CALL renderFrame(
         assert(output_num.type == VariableType::Int);
 
         // 合計して返す
-        int output_int = *reinterpret_cast<std::int64_t*>(output_num.value);
+        std::int64_t output_int = *reinterpret_cast<std::int64_t*>(output_num.value);
         *reinterpret_cast<std::int32_t*>(output_num.value) = 0;
 
         VectorParam* input_vec_ptr = reinterpret_cast<VectorParam*>(input_vec.value);

@@ -100,7 +100,7 @@ EXPORT bool API_CALL renderFrame(
         assert(output_text.type == VariableType::Text);
 
 		// 入力を取得
-        int input_int = *reinterpret_cast<std::int64_t*>(input_num.value);
+        std::int64_t input_int = *reinterpret_cast<std::int64_t*>(input_num.value);
 
         // 3, 4, 5 倍
         VectorParam* output_vec_ptr = reinterpret_cast<VectorParam*>(output_vec.value);
