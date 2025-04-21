@@ -39,6 +39,7 @@ endif()
 
 if(PRISM_BUILD_SAMPLES)
   add_subdirectory(cli)
+  add_subdirectory(sample_plugins)
 endif()
 
 # ──────────────────────────────────────────────

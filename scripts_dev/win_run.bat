@@ -6,6 +6,7 @@ chcp 65001
 
 cmake ..
 cmake --build . --parallel --config RelWithDebInfo
+rem cmake --build . --config RelWithDebInfo
 
 
 rem ===== run all test executables =====

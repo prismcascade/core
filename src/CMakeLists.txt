@@ -20,7 +20,9 @@ target_include_directories(prismcascade
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
   PRIVATE              # 実装側から src/ の内部ヘッダを参照可
-    ${CMAKE_CURRENT_SOURCE_DIR})
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/include/prismcascade
+)
 
 # 4. コンパイラオプション
 target_compile_features(prismcascade PUBLIC cxx_std_20)
