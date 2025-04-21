@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true     # external/ submodule を取得
+
+      - name: Install LLVM on Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1  # sets up MSVC environment
+      - name: Install Clang on Windows
+        if: runner.os == 'Windows'
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: 17
+
+      - name: Configure (CMake)
+        run: >
+          cmake -B build -G Ninja
+          -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-clang17.cmake
+          -DPRISM_BUILD_TESTS=ON
+          -DPRISM_BUILD_SAMPLES=OFF
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure

@@ -1,0 +1,2 @@
+add_executable(prismcascade_cli cli.cpp)
+target_link_libraries(prismcascade_cli PRIVATE prismcascade)

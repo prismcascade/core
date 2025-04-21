@@ -1,0 +1,22 @@
+# ---------- 基本 ----------
+BasedOnStyle: Google  # Google ルールをベース
+ColumnLimit: 120
+
+# ---------- インデント ----------
+UseTab: Never  # すべてスペース
+IndentWidth: 4
+ContinuationIndentWidth: 4
+
+# ---------- 波括弧と短い文 ----------
+BreakBeforeBraces: Attach  # if () { 形式
+AllowShortIfStatementsOnASingleLine: true
+AllowShortBlocksOnASingleLine: true
+
+# ---------- 整列・演算子 ----------
+BreakBeforeBinaryOperators: NonAssignment  # = は改行後、その他前
+AlignConsecutiveAssignments: true          # 連続代入を縦揃え
+AlignConsecutiveDeclarations: true
+
+# ---------- その他 ----------
+SortIncludes: true
+IncludeBlocks: Regroup
