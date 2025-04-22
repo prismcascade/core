@@ -47,20 +47,20 @@ struct AudioParam {
 
 struct TextParam {
     void*         handler{};
-    std::uint32_t size   = 0;
+    std::uint64_t size   = 0;
     const char*   buffer = nullptr;
 };
 
 struct VectorParam {
     void*         handler{};
     VariableType  type{};
-    std::uint32_t size   = 0;
+    std::uint64_t size   = 0;
     void*         buffer = nullptr;
 };
 
 // ラッパー
 struct PluginMetaData {
-    std::int32_t protocol_version = 1;
+    std::int64_t protocol_version = 1;
     PluginType   type;
     TextParam    uuid;
     TextParam    name;
@@ -72,7 +72,7 @@ struct Parameter {
 };
 
 struct ParameterPack {
-    std::int32_t size       = 0;
+    std::int64_t size       = 0;
     Parameter*   parameters = nullptr;
 };
 }

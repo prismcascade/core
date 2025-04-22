@@ -31,9 +31,9 @@ namespace prismcascade::scheduler {
  */
 using LifetimeTable = std::vector<std::map<std::pair<std::int64_t, std::int32_t>, std::int64_t>>;
 
-std::tuple<std::vector<std::shared_ptr<ast::Node>>,  // sorted
-           std::vector<std::shared_ptr<ast::Node>>,  // cycles
+std::tuple<std::vector<std::shared_ptr<ast::AstNode>>,  // sorted
+           std::vector<std::shared_ptr<ast::AstNode>>,  // cycles
            LifetimeTable>
-topological_sort(const std::shared_ptr<ast::Node>& ast_root);
+topological_sort(const std::shared_ptr<ast::AstNode>& ast_root);
 
 }  // namespace prismcascade::scheduler

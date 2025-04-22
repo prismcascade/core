@@ -18,11 +18,11 @@ const Parameter& ParameterMemory::get_paramter_struct() {
 std::shared_ptr<ParameterMemory> make_empty_value(const std::vector<VariableType>& types) {
     switch (types.at(0)) {
         case VariableType::Int:
-            return std::static_pointer_cast<ParameterMemory>(std::make_shared<IntMemory>());
+            return std::static_pointer_cast<ParameterMemory>(std::make_shared<IntParamMemory>());
         case VariableType::Bool:
-            return std::static_pointer_cast<ParameterMemory>(std::make_shared<BoolMemory>());
+            return std::static_pointer_cast<ParameterMemory>(std::make_shared<BoolParamMemory>());
         case VariableType::Float:
-            return std::static_pointer_cast<ParameterMemory>(std::make_shared<FloatMemory>());
+            return std::static_pointer_cast<ParameterMemory>(std::make_shared<FloatParamMemory>());
         case VariableType::Text:
             return std::static_pointer_cast<ParameterMemory>(std::make_shared<TextParamMemory>());
         case VariableType::Vector:
@@ -39,23 +39,23 @@ std::shared_ptr<ParameterMemory> make_empty_value(const std::vector<VariableType
 /* ────────────────────────────────────────────── */
 /*  Int / Bool / Float                            */
 /* ────────────────────────────────────────────── */
-IntMemory::IntMemory() : ParameterMemory(VariableType::Int) {}
-std::int64_t& IntMemory::buffer() { return parameter_instance_; }
-void          IntMemory::refresh_parameter_struct() {
+IntParamMemory::IntParamMemory() : ParameterMemory(VariableType::Int) {}
+std::int64_t& IntParamMemory::buffer() { return parameter_instance_; }
+void          IntParamMemory::refresh_parameter_struct() {
     parameter_.type  = VariableType::Int;
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
-BoolMemory::BoolMemory() : ParameterMemory(VariableType::Bool) {}
-bool& BoolMemory::buffer() { return parameter_instance_; }
-void  BoolMemory::refresh_parameter_struct() {
+BoolParamMemory::BoolParamMemory() : ParameterMemory(VariableType::Bool) {}
+bool& BoolParamMemory::buffer() { return parameter_instance_; }
+void  BoolParamMemory::refresh_parameter_struct() {
     parameter_.type  = VariableType::Bool;
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
-FloatMemory::FloatMemory() : ParameterMemory(VariableType::Float) {}
-double& FloatMemory::buffer() { return parameter_instance_; }
-void    FloatMemory::refresh_parameter_struct() {
+FloatParamMemory::FloatParamMemory() : ParameterMemory(VariableType::Float) {}
+double& FloatParamMemory::buffer() { return parameter_instance_; }
+void    FloatParamMemory::refresh_parameter_struct() {
     parameter_.type  = VariableType::Float;
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
@@ -68,6 +68,7 @@ VideoFrameMemory::VideoFrameMemory() : ParameterMemory(VariableType::Video) {}
 void VideoFrameMemory::update_metadata(VideoMetaData metadata) {
     metadata_ = metadata;
     buffer_.resize(metadata.height * metadata.width * 4);
+    refresh_parameter_struct();
 }
 void VideoFrameMemory::update_metadata_static(void* handler, VideoMetaData metadata) {
     VideoFrameMemory* ptr = reinterpret_cast<VideoFrameMemory*>(handler);
@@ -94,6 +95,7 @@ AudioParamMemory::AudioParamMemory() : ParameterMemory(VariableType::Audio) {}
 void AudioParamMemory::update_metadata(AudioMetaData metadata) {
     metadata_ = metadata;
     buffer_.resize(metadata.channels * metadata.total_samples);
+    refresh_parameter_struct();
 }
 void AudioParamMemory::update_metadata_static(void* handler, AudioMetaData metadata) {
     AudioParamMemory* ptr = reinterpret_cast<AudioParamMemory*>(handler);
@@ -115,7 +117,10 @@ void                 AudioParamMemory::refresh_parameter_struct() {
 /*  TextParamMemory                               */
 /* ────────────────────────────────────────────── */
 TextParamMemory::TextParamMemory() : ParameterMemory(VariableType::Text) {}
-void TextParamMemory::assign_text(const char* text) { buffer_ = std::string(text); }
+void TextParamMemory::assign_text(const char* text) {
+    buffer_ = std::string(text);
+    refresh_parameter_struct();
+}
 void TextParamMemory::assign_text_static(void* handler, const char* text) {
     TextParamMemory* ptr = reinterpret_cast<TextParamMemory*>(handler);
     if (ptr) ptr->assign_text(text);
@@ -123,7 +128,7 @@ void TextParamMemory::assign_text_static(void* handler, const char* text) {
 std::string& TextParamMemory::buffer() { return buffer_; }
 void         TextParamMemory::refresh_parameter_struct() {
     parameter_instance_.handler = reinterpret_cast<void*>(this);
-    parameter_instance_.size    = static_cast<std::uint32_t>(buffer_.size());
+    parameter_instance_.size    = static_cast<std::uint64_t>(buffer_.size());
     parameter_instance_.buffer  = buffer_.data();
 
     parameter_.type  = VariableType::Text;
@@ -133,23 +138,26 @@ void         TextParamMemory::refresh_parameter_struct() {
 /* ────────────────────────────────────────────── */
 /*  VectorParamMemory                             */
 /* ────────────────────────────────────────────── */
-VectorParamMemory::VectorParamMemory(VariableType innert_type)
-    : ParameterMemory(VariableType::Vector), inner_type_{innert_type} {}
-void VectorParamMemory::allocate_vector(std::uint32_t size) {
+VectorParamMemory::VectorParamMemory(VariableType inner_type)
+    : ParameterMemory(VariableType::Vector), inner_type_{inner_type} {}
+void VectorParamMemory::allocate_vector(std::uint64_t size) {
     // NOTE: 内部にデフォルトでポインタを保持していないことを要確認
     // NOTE: デフォルト構築できることを確認 (特に，将来的に二重 Vector を許す際には注意)
     memory_buffer_.resize(size);
+    for (auto& memory_buffer_instance : memory_buffer_) memory_buffer_instance = make_empty_value({inner_type_});
+    refresh_parameter_struct();
 }
-void VectorParamMemory::allocate_vector_static(void* handler, std::uint32_t size) {
+void VectorParamMemory::allocate_vector_static(void* handler, std::uint64_t size) {
     VectorParamMemory* ptr = reinterpret_cast<VectorParamMemory*>(handler);
     if (ptr) ptr->allocate_vector(size);
 }
 void VectorParamMemory::refresh_parameter_struct() {
+    // TODO: optimize
     vector_buffer_.clear();
     for (const auto& memory : memory_buffer_) vector_buffer_.emplace_back(memory->get_paramter_struct());
 
     parameter_instance_.handler = reinterpret_cast<void*>(this);
-    parameter_instance_.size    = static_cast<std::uint32_t>(vector_buffer_.size());
+    parameter_instance_.size    = static_cast<std::uint64_t>(vector_buffer_.size());
     parameter_instance_.type    = inner_type_;
     parameter_instance_.buffer  = vector_buffer_.data();
 
@@ -161,14 +169,18 @@ void VectorParamMemory::refresh_parameter_struct() {
 /*  ParameterPackMemory                           */
 /* ────────────────────────────────────────────── */
 void ParameterPackMemory::update_types(const std::vector<std::vector<VariableType>>& types) {
+    // TODO: optimize
     memory_buffer_.clear();
     for (const auto& type : types) memory_buffer_.emplace_back(make_empty_value(type));
+    types_ = types;
+    size_  = memory_buffer_.size();
 }
-std::int32_t                                        ParameterPackMemory::size() { return size_; }
+std::uint64_t                                       ParameterPackMemory::size() { return size_; }
 const std::vector<std::vector<VariableType>>&       ParameterPackMemory::types() { return types_; }
 const std::vector<std::shared_ptr<ParameterMemory>> ParameterPackMemory::buffer() { return memory_buffer_; }
 
 const ParameterPack& ParameterPackMemory::get_paramter_struct() {
+    // TODO: optimize
     buffer_.clear();
     for (const auto& memory : memory_buffer_) buffer_.push_back(memory->get_paramter_struct());
     parameter_pack_instance_.size       = buffer_.size();

@@ -45,14 +45,14 @@ class PluginManager {
     explicit PluginManager(const std::optional<std::string>& plugin_dir = std::nullopt);
 
     /* -------- ノード生成／入力設定 ----------------------------- */
-    std::shared_ptr<ast::Node> make_node(const std::string& uuid, std::weak_ptr<ast::Node> parent = {});
+    std::shared_ptr<ast::AstNode> make_node(const std::string& uuid, std::weak_ptr<ast::AstNode> parent = {});
 
-    void assign_input(std::shared_ptr<ast::Node> node, int index, ast::Node::Input value);
+    void assign_input(std::shared_ptr<ast::AstNode> node, int index, ast::AstNode::input_t value);
 
     /* -------- プラグイン呼び出し ------------------------------- */
-    bool invoke_start_rendering(std::shared_ptr<ast::Node> node);
-    bool invoke_render_frame(std::shared_ptr<ast::Node> node, int frame);
-    void invoke_finish_rendering(std::shared_ptr<ast::Node> node);
+    bool invoke_start_rendering(std::shared_ptr<ast::AstNode> node);
+    bool invoke_render_frame(std::shared_ptr<ast::AstNode> node, int frame);
+    void invoke_finish_rendering(std::shared_ptr<ast::AstNode> node);
 
    private:
     /* UUID → PluginHandlerID */
@@ -62,14 +62,14 @@ class PluginManager {
     std::map<std::int64_t, plugin::DynamicLibrary> libraries_;
 
     /* internal helpers */
-    std::vector<VariableType> infer_input_type(const ast::Node::Input&);
+    std::vector<VariableType> infer_input_type(const ast::AstNode::input_t&);
 
-    void remove_old_refs(const ast::Node::Input&, const std::shared_ptr<ast::Node>&);
-    void add_new_refs(const ast::Node::Input&, const std::shared_ptr<ast::Node>&);
+    void remove_old_refs(const ast::AstNode::input_t&, const std::shared_ptr<ast::AstNode>&);
+    void add_new_refs(const ast::AstNode::input_t&, const std::shared_ptr<ast::AstNode>&);
 
-    void gather_subtree_nodes(const std::shared_ptr<ast::Node>&               root,
-                              std::unordered_set<std::shared_ptr<ast::Node>>& out);
-    void detach_subtree_boundary(const std::unordered_set<std::shared_ptr<ast::Node>>&);
+    void gather_subtree_nodes(const std::shared_ptr<ast::AstNode>&               root,
+                              std::unordered_set<std::shared_ptr<ast::AstNode>>& out);
+    void detach_subtree_boundary(const std::unordered_set<std::shared_ptr<ast::AstNode>>&);
 };
 
 }  // namespace prismcascade::plugin

@@ -1,18 +1,14 @@
 #pragma once
 #include <cstdint>
 #include <memory>
-#include <prismcascade/common/types.hpp>
 
 namespace prismcascade::ast {
 
-struct Node;
+struct AstNode;
 
 struct SubEdge {
-    VariableType        type{};
-    std::weak_ptr<Node> from;
-    std::int32_t        from_index{};
-    std::weak_ptr<Node> to;
-    std::int32_t        to_index{};
+    std::weak_ptr<AstNode> source;
+    std::uint64_t          output_index{};
 };
 
 }  // namespace prismcascade::ast

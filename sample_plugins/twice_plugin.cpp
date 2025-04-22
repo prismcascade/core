@@ -21,11 +21,16 @@ using namespace prismcascade;
 
 extern "C" {
 
+EXPORT bool API_CALL hello_world(int t) {
+    std::cout << "Hello world: [" << t << "]" << std::endl;
+    return true;
+}
+
 // ─────────────────────────────────────────────
 // 1. メタ情報
 // ─────────────────────────────────────────────
 EXPORT bool API_CALL getMetaInfo(void* host, std::int64_t self, PluginMetaData* meta, allocate_param_fn allocate_param,
-                                 assign_utf8_fn           assign_utf8, add_required_fn /*unused*/,
+                                 assign_text_fn           assign_text, add_required_fn /*unused*/,
                                  add_handleable_effect_fn add_handleable) {
     allocate_param(host, self, /*is_output=*/false, VariableType::Int, "入力");
 
@@ -37,8 +42,8 @@ EXPORT bool API_CALL getMetaInfo(void* host, std::int64_t self, PluginMetaData* 
 
     meta->protocol_version = 1;
     meta->type             = PluginType::Effect;
-    assign_utf8(host, &meta->uuid, "f0000000-0000-0000-0000-000000000000");
-    assign_utf8(host, &meta->name, "The greatest twice plugin");
+    assign_text(host, &meta->uuid, "f0000000-0000-0000-0000-000000000000");
+    assign_text(host, &meta->name, "The greatest twice plugin");
     return true;
 }
 
@@ -56,7 +61,7 @@ EXPORT void API_CALL onDestroyPlugin() { std::cerr << "[twice] destroyed\n"; }
 // ─────────────────────────────────────────────
 EXPORT bool API_CALL onStartRendering(void* host, VideoMetaData* /*video_est*/, AudioMetaData* /*audio_est*/,
                                       ParameterPack* /*input*/, ParameterPack*      output, load_video_fn /*unused*/,
-                                      assign_utf8_fn /*assign*/, allocate_vector_fn alloc_vec,
+                                      assign_text_fn /*assign*/, allocate_vector_fn alloc_vec,
                                       allocate_video_fn /*unused*/, allocate_audio_fn /*unused*/) {
     // vector<Int> 出力だけ事前確保 (サイズ3)
     alloc_vec(host, reinterpret_cast<VectorParam*>(output->parameters[0].value), 3);
@@ -70,7 +75,7 @@ EXPORT void API_CALL onFinishRendering() {}
 // ─────────────────────────────────────────────
 EXPORT bool API_CALL renderFrame(void* host, ParameterPack* input, ParameterPack* output,
                                  const VideoMetaData /*video_meta*/, const AudioMetaData /*audio_meta*/,
-                                 std::int64_t /*frame*/, load_video_fn /*unused*/, assign_utf8_fn assign) {
+                                 std::int64_t /*frame*/, load_video_fn /*unused*/, assign_text_fn assign) {
     // 入力
     assert(input->size == 1);
     std::int64_t in_val = *static_cast<std::int64_t*>(input->parameters[0].value);

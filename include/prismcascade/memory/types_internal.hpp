@@ -24,9 +24,9 @@ std::shared_ptr<ParameterMemory> make_empty_value(const std::vector<VariableType
 
 // -------------------------------- //
 
-class IntMemory : public ParameterMemory {
+class IntParamMemory : public ParameterMemory {
    public:
-    IntMemory();
+    IntParamMemory();
     std::int64_t& buffer();
 
    protected:
@@ -34,9 +34,9 @@ class IntMemory : public ParameterMemory {
     std::int64_t parameter_instance_{};
 };
 
-class BoolMemory : public ParameterMemory {
+class BoolParamMemory : public ParameterMemory {
    public:
-    BoolMemory();
+    BoolParamMemory();
     bool& buffer();
 
    protected:
@@ -44,9 +44,9 @@ class BoolMemory : public ParameterMemory {
     bool parameter_instance_{};
 };
 
-class FloatMemory : public ParameterMemory {
+class FloatParamMemory : public ParameterMemory {
    public:
-    FloatMemory();
+    FloatParamMemory();
     double& buffer();
 
    protected:
@@ -60,7 +60,7 @@ class VideoFrameMemory : public ParameterMemory {
    public:
     VideoFrameMemory();
     void                 update_metadata(VideoMetaData metadata);
-    static void          update_metadata_static(void* handler, VideoMetaData metadata);
+    static void          update_metadata_static(void* handler, VideoMetaData metadata);  // TODO: 不要なら削除
     const VideoMetaData& metadata();
     std::size_t          size() const;
     std::uint8_t&        at(std::size_t index);
@@ -77,7 +77,7 @@ class AudioParamMemory : public ParameterMemory {
    public:
     AudioParamMemory();
     void                 update_metadata(AudioMetaData metadata);
-    static void          update_metadata_static(void* handler, AudioMetaData metadata);
+    static void          update_metadata_static(void* handler, AudioMetaData metadata);  // TODO: 不要なら削除
     const AudioMetaData& metadata();
     std::size_t          size() const;
     double&              at(std::size_t index);
@@ -106,8 +106,8 @@ struct VectorParamMemory : public ParameterMemory {
    public:
     VectorParamMemory() = delete;
     VectorParamMemory(VariableType inner_type);
-    void                             allocate_vector(std::uint32_t size);
-    static void                      allocate_vector_static(void* handler, std::uint32_t size);
+    void                             allocate_vector(std::uint64_t size);
+    static void                      allocate_vector_static(void* handler, std::uint64_t size);
     const VariableType               inner_type_;
     std::size_t                      size() const;
     std::shared_ptr<ParameterMemory> at(std::size_t index);
@@ -124,12 +124,12 @@ class ParameterPackMemory {
    public:
     const ParameterPack&                          get_paramter_struct();
     void                                          update_types(const std::vector<std::vector<VariableType>>& types);
-    std::int32_t                                  size();
+    std::uint64_t                                 size();
     const std::vector<std::vector<VariableType>>& types();
     const std::vector<std::shared_ptr<ParameterMemory>> buffer();
 
    private:
-    std::int32_t                                  size_ = 0;
+    std::uint64_t                                 size_ = 0;
     std::vector<std::vector<VariableType>>        types_;
     std::vector<std::shared_ptr<ParameterMemory>> memory_buffer_;
 
@@ -142,10 +142,10 @@ std::string to_string(VariableType variable_type);
 std::string to_string(PluginType variable_type);
 
 struct PluginMetaDataInternal {
-    std::int32_t protocol_version = 1;
-    PluginType   type{};
-    std::string  uuid;
-    std::string  name;
+    std::uint64_t protocol_version = 1;
+    PluginType    type{};
+    std::string   uuid;
+    std::string   name;
 };
 
 }  // namespace prismcascade

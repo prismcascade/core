@@ -16,7 +16,7 @@ extern "C" {
 typedef bool (*allocate_param_fn)(void* host, std::int64_t self, bool is_output, prismcascade::VariableType type,
                                   const char* name, ...);
 
-typedef bool (*assign_utf8_fn)(void* host, prismcascade::TextParam* dst, const char* utf8);
+typedef bool (*assign_text_fn)(void* host, prismcascade::TextParam* dst, const char* utf8);
 
 typedef bool (*add_required_fn)(void* host, std::int64_t self, const char* effect_name);
 
@@ -32,7 +32,7 @@ typedef bool (*allocate_audio_fn)(void* host, prismcascade::AudioParam* dst);
 
 /* ===== Plugin‑exported function typedefs ====================== */
 typedef bool (*fn_getMetaInfo)(void* host, std::int64_t self, prismcascade::PluginMetaData* out_meta,
-                               allocate_param_fn allocate_param, assign_utf8_fn assign_utf8,
+                               allocate_param_fn allocate_param, assign_text_fn assign_text,
                                add_required_fn add_required, add_handleable_effect_fn add_handleable);
 
 typedef bool (*fn_onLoadPlugin)(void);
@@ -41,14 +41,14 @@ typedef void (*fn_onDestroyPlugin)(void);
 typedef bool (*fn_onStartRendering)(void* host, prismcascade::VideoMetaData* est_video,
                                     prismcascade::AudioMetaData* est_audio, prismcascade::ParameterPack* input,
                                     prismcascade::ParameterPack* output, load_video_fn load_video,
-                                    assign_utf8_fn assign_utf8, allocate_vector_fn alloc_vec,
+                                    assign_text_fn assign_text, allocate_vector_fn alloc_vec,
                                     allocate_video_fn alloc_vid, allocate_audio_fn alloc_aud);
 
 typedef void (*fn_onFinishRendering)(void);
 
 typedef bool (*fn_renderFrame)(void* host, prismcascade::ParameterPack* input, prismcascade::ParameterPack* output,
                                const prismcascade::VideoMetaData est_video, const prismcascade::AudioMetaData est_audio,
-                               std::int64_t frame_idx, load_video_fn load_video, assign_utf8_fn assign_utf8);
+                               std::int64_t frame_idx, load_video_fn load_video, assign_text_fn assign_text);
 
 typedef bool (*fn_applyMacro)(void);
 typedef bool (*fn_handleEffect)(const char* effect_name);
