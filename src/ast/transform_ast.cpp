@@ -46,7 +46,7 @@ std::vector<AstDiffStep> cut(const std::shared_ptr<AstNode>& parent, std::int32_
 
     // 1) RemoveInput step
     out.push_back(AstDiffStep{
-        StepKind::RemoveInput, parent, static_cast<std::uint32_t>(slot),
+        parent, static_cast<std::uint32_t>(slot),
         old,              // old_value
         std::monostate{}  // new_value
     });
@@ -58,12 +58,7 @@ std::vector<AstDiffStep> cut(const std::shared_ptr<AstNode>& parent, std::int32_
         // no SubEdge refs to remove
     } else if (auto sub_edge = std::get_if<SubEdge>(&old)) {
         if (auto from = sub_edge->source.lock()) {
-            bool removed = erase_backref(*from, parent, slot, sub_edge->output_index);
-            if (removed) {
-                out.push_back(AstDiffStep{
-                    StepKind::RemoveSubEdgeBackRef, from, sub_edge->output_index, {}, {},  // old/new unused
-                });
-            }
+            [[maybe_unused]] bool removed = erase_backref(*from, parent, slot, sub_edge->output_index);
         }
     }
     return out;
@@ -95,21 +90,18 @@ std::vector<AstDiffStep> assign(const std::shared_ptr<AstNode>& parent, std::uin
     // a) 旧値が SubEdge だった場合、逆参照を外す
     if (auto seOld = std::get_if<SubEdge>(&old)) {
         if (auto oldFrom = seOld->source.lock()) {
-            bool removed = erase_backref(*oldFrom, parent, slot, seOld->output_index);
-            if (removed) { out.push_back({StepKind::RemoveSubEdgeBackRef, oldFrom, seOld->output_index}); }
+            [[maybe_unused]] bool removed = erase_backref(*oldFrom, parent, slot, seOld->output_index);
         }
     }
 
     // b) 書き込み
     parent->inputs[slot] = value;
-    out.push_back(AstDiffStep{StepKind::AssignInput, parent, slot, old, value});
+    out.push_back(AstDiffStep{parent, slot, old, value});
 
     // c) 新値が SubEdge なら逆参照を追加
     if (auto seNew = std::get_if<SubEdge>(&value)) {
         if (auto from = seNew->source.lock()) {
             from->sub_output_references.push_back(AstNode::SubOutputRef{seNew->output_index, parent, slot});
-
-            out.push_back({StepKind::AddSubEdgeBackRef, from, seNew->output_index});
         }
     }
 

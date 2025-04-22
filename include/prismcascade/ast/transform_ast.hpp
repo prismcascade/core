@@ -8,15 +8,7 @@ namespace prismcascade {
 
 namespace ast {
 
-enum class StepKind {
-    AssignInput,        // parent[idx] ← value
-    RemoveInput,        // parent[idx] ← monostate
-    AddSubEdgeBackRef,  // from.sub_output_refs += (fromIdx, dst, dstIdx)
-    RemoveSubEdgeBackRef
-};
-
 struct AstDiffStep {
-    StepKind                 kind;
     std::shared_ptr<AstNode> node;       // 影響ノード
     std::uint64_t            index = 0;  // スロット or 出力 index
     AstNode::input_t         old_value;  // Assign/Remove 用
