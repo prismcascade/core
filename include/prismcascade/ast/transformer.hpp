@@ -1,4 +1,3 @@
-// include/prismcascade/ast/transformer.hpp
 #pragma once
 /**
  *  Prism Cascade – Ast::Transformer

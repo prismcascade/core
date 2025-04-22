@@ -3,6 +3,7 @@
 #include <optional>
 #include <prismcascade/ast/edge.hpp>
 #include <prismcascade/common/types.hpp>
+#include <prismcascade/memory/types_internal.hpp>
 #include <string>
 #include <variant>
 #include <vector>
@@ -18,8 +19,8 @@ struct Node {
     PluginMetaDataInternal meta;
 
     // 入力
-    using Input = std::variant<std::shared_ptr<Node>,  // メイン出力を通じた AST 接続
-                               SubEdge,                // サブ出力参照
+    using Input = std::variant<std::monostate, std::shared_ptr<Node>,  // メイン出力を通じた AST 接続
+                               SubEdge,                                // サブ出力参照
                                std::int64_t, bool, double, std::string, VectorParam, VideoFrame, AudioParam>;
 
     std::vector<Input> inputs;
@@ -31,9 +32,6 @@ struct Node {
     // Clip として振る舞う場合
     std::optional<VideoMetaData> video_meta;
     std::optional<AudioMetaData> audio_meta;
-
-    // デフォルト値生成
-    static Input make_empty_value(const std::vector<VariableType>& types);
 };
 
 }  // namespace prismcascade::ast
