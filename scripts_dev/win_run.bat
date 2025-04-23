@@ -8,6 +8,7 @@ cmake ..
 cmake --build . --parallel --config RelWithDebInfo
 rem cmake --build . --config RelWithDebInfo
 
+@REM exit
 
 rem ===== run all test executables =====
 for %%f in (tests\RelWithDebInfo\*.exe) do (
