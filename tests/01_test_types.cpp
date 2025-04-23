@@ -1,21 +1,10 @@
-// tests/unit/test_types.cpp
-//
-// ビルドに必要なもの:
-//   target_link_libraries(<exe> PRIVATE prismcascade gtest_main)
-//
-// 検証項目
-//   1. 列挙型 VariableType が 7 要素あること
-//   2. VideoMetaData / AudioMetaData のデフォルト値
-//   3. TextParam など構造体サイズが非ゼロ
-//   4. ParameterPack の 0 初期化
-//
-// GoogleTest を使用
-//
 #include <gtest/gtest.h>
 
 #include <prismcascade/common/types.hpp>
 
 using namespace prismcascade;
+
+// テストすべき事が無い気がするが，一応初期値くらいは検査しておく。
 
 TEST(Types, EnumCount) {
     // C++17 では std::to_underlying が無いので static_cast

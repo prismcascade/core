@@ -22,8 +22,9 @@ struct VideoMetaData {
 };
 
 struct AudioMetaData {
-    std::uint32_t channels      = 0;
-    std::uint64_t total_samples = 0;
+    std::uint32_t channels       = 0;
+    std::uint64_t total_samples  = 0;
+    bool          is_ring_buffer = false;
 };
 
 // 受け渡し用パラメータ

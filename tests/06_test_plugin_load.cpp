@@ -13,8 +13,8 @@
 
 #include <prismcascade/plugin/plugin_manager.hpp>
 
-using namespace prismcascade;
-using plugin::PluginManager;
+// using namespace prismcascade;
+// using plugin::PluginManager;
 
 // TEST(PluginIntegration, TwicePluginLifecycle)
 // {

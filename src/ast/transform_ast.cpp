@@ -41,6 +41,7 @@ std::vector<AstDiffStep> cut(const std::shared_ptr<AstNode>& parent, std::uint64
     if (slot >= parent->inputs.size()) throw std::domain_error("cut: slot OOB");
 
     AstNode::input_t old = parent->inputs[slot];
+    // ここのエラーはなくても動作としては同じだが，無駄を検出するために一応例外を飛ばす
     if (std::holds_alternative<std::monostate>(old)) throw std::domain_error("cut: slot empty");
 
     std::vector<AstDiffStep> diff;
@@ -66,8 +67,14 @@ std::vector<AstDiffStep> assign(const std::shared_ptr<AstNode>& parent, std::uin
     if (slot >= parent->inputs.size()) throw std::domain_error("assign: slot OOB");
 
     /* 木閉路チェック (child) */
-    if (auto child = std::get_if<std::shared_ptr<AstNode>>(&value))
-        if (*child && is_ancestor(*child, parent)) throw std::domain_error("assign: creates main-tree cycle");
+    if (auto child = std::get_if<std::shared_ptr<AstNode>>(&value)) {
+        if (*child) {
+            if (*child == parent)  // 自己代入を明示的に拒否
+                throw std::domain_error("assign: self-loop");
+            if (is_ancestor(*child, parent))  // 子孫を祖先に付ける → cycle
+                throw std::domain_error("assign: would create main-tree cycle");
+        }
+    }
 
     /* SubEdge 閉路: from が parent 系列なら NG */
     if (auto se = std::get_if<SubEdge>(&value)) {

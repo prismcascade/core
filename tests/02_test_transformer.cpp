@@ -8,6 +8,7 @@
 
 #include <prismcascade/ast/node.hpp>
 #include <prismcascade/ast/transform_ast.hpp>
+#include <queue>
 
 using namespace prismcascade;
 
@@ -320,89 +321,114 @@ TEST(DetachError, Nullptr) {
     EXPECT_THROW(ast::detach_cross_edges(nullNode), std::domain_error);
 }
 
-// // tests/unit/test_transformer.cpp
-// //
-// // 範囲: ast::Transformer ― 低レベル 1 ステップ操作の検証
-// //
-// // 期待動作
-// //   1. insert_node   : 親 inputs[index] に追加され parent 参照が付く
-// //   2. delete_node   : 親‑子リンクが両方向とも解除される
-// //   3. replace_node  : variant が置換され前値が DiffStep.old に入る
-// //   4. connect_input / disconnect_input
-// //   5. reconnect_sub_edge : SubEdge 差し替え
-// //
-// // gtest_main と prismcascade ライブラリにリンクしてください
-// //
-// #include <gtest/gtest.h>
+namespace {
 
-// #include <prismcascade/ast/transformer.hpp>
+/*  全ノードが “親ポインタを辿ったときに循環を持たない” かを検証 ───────── */
+bool forestIsCycleFree(const std::vector<std::shared_ptr<ast::AstNode>>& nodes) {
+    for (auto& n : nodes) {
+        std::unordered_set<ast::AstNode*> seen;
+        auto                              cur = n;
+        while (cur) {
+            if (!seen.insert(cur.get()).second) return false;  // 2 度目 ⇒ cycle
+            cur = cur->parent.lock();
+        }
+    }
+    return true;
+}
 
-// using namespace prismcascade;
-// using ast::DiffStep;
-// using ast::Node;
-// using ast::Transformer;
+/* 親リンクスナップショット (テスト用) */
+std::vector<ast::AstNode*> snapshotParents(const std::vector<std::shared_ptr<ast::AstNode>>& nodes) {
+    std::vector<ast::AstNode*> v;
+    v.reserve(nodes.size());
+    for (auto& n : nodes) v.push_back(n ? n->parent.lock().get() : nullptr);
+    return v;
+}
 
-// TEST(Transformer, InsertAndDelete) {
-//     Transformer tr;
+}  // namespace
 
-//     auto parent = std::make_shared<Node>();
-//     auto child  = std::make_shared<Node>();
+/* ================================================================= */
+/* 1. 多スロット独立性                                               */
+/* ================================================================= */
+TEST(TransformExtended, AssignDifferentSlotDoesNotAffectOthers) {
+    auto P = makeNode(1);
+    P->inputs.resize(3, std::monostate{});
 
-//     /* insert */
-//     auto ins = tr.insert_node(parent, 0, child);
-//     EXPECT_EQ(ins.action, DiffStep::Type::InsertNode);
-//     ASSERT_EQ(parent->inputs.size(), 1u);
-//     EXPECT_TRUE(std::holds_alternative<std::shared_ptr<Node>>(parent->inputs[0]));
-//     EXPECT_EQ(std::get<std::shared_ptr<Node>>(parent->inputs[0]), child);
-//     EXPECT_FALSE(child->parent.expired());
+    auto C1 = makeNode(2);
+    auto C2 = makeNode(3);
 
-//     /* delete */
-//     auto del = tr.delete_node(child);
-//     EXPECT_EQ(del.action, DiffStep::Type::DeleteNode);
-//     EXPECT_TRUE(parent->inputs[0].valueless_by_exception() ||
-//     std::holds_alternative<std::int64_t>(parent->inputs[0])); EXPECT_TRUE(child->parent.expired());
-// }
+    ASSERT_NO_THROW(ast::assign(P, 1, C1));
+    ASSERT_NO_THROW(ast::assign(P, 2, 42));
 
-// TEST(Transformer, ReplaceLiteral) {
-//     Transformer tr;
+    ASSERT_NO_THROW(ast::assign(P, 1, C2));  // slot-1 を差し替え
 
-//     auto n   = std::make_shared<Node>();
-//     auto old = std::make_shared<Node>();
-//     tr.insert_node(n, 0, old);
+    // slot-2 はそのまま
+    EXPECT_TRUE(std::holds_alternative<std::int64_t>(P->inputs[2]));
+    EXPECT_EQ(std::get<std::int64_t>(P->inputs[2]), 42);
+}
 
-//     Node::Input literal = std::int64_t{42};
-//     auto        rep     = tr.replace_node(n, 0, literal);
-//     EXPECT_EQ(rep.action, DiffStep::Type::ReplaceNode);
-//     ASSERT_TRUE(std::holds_alternative<std::int64_t>(n->inputs[0]));
-//     EXPECT_EQ(std::get<std::int64_t>(n->inputs[0]), 42);
-// }
+/* ================================================================= */
+/* 2. Variant 全型 round-trip                                        */
+/* ================================================================= */
+TEST(TransformExtended, VariantAssignRoundTripForAllTypes) {
+    auto N = makeNode(10);
+    N->inputs.resize(1, std::monostate{});
 
-// TEST(Transformer, ConnectAndDisconnect) {
-//     Transformer tr;
-//     auto        p = std::make_shared<Node>();
-//     auto        c = std::make_shared<Node>();
+    auto roundTrip = [&](auto value) {
+        auto diff = ast::assign(N, 0, value);
+        // undo → monostate に戻るはず
+        for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::assign(it->node, it->index, it->old_value);
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(N->inputs[0]));
+    };
 
-//     /* connect */
-//     auto st = tr.connect_input(p, 0, c);
-//     EXPECT_EQ(st.action, DiffStep::Type::ConnectInput);
-//     EXPECT_EQ(std::get<std::shared_ptr<Node>>(p->inputs[0]), c);
+    roundTrip(std::int64_t{123});
+    roundTrip(true);
+    roundTrip(3.14);
+    roundTrip(std::string{"abc"});
+}
 
-//     /* disconnect */
-//     auto dc = tr.disconnect_input(p, 0);
-//     EXPECT_EQ(dc.action, DiffStep::Type::DisconnectInput);
-//     EXPECT_TRUE(p->inputs[0].valueless_by_exception() || std::holds_alternative<std::int64_t>(p->inputs[0]));
-// }
+/* ================================================================= */
+/* 3. ランダム操作列 + 例外安全プロパティ                             */
+/* ================================================================= */
+RC_GTEST_PROP(TransformExtendedProp, RandomSequenceKeepsForestInvariant, ()) {
+    constexpr int kNodes = 20;
+    constexpr int kSlots = 3;
+    constexpr int kSteps = 60;
 
-// TEST(Transformer, ReconnectSubEdge) {
-//     Transformer tr;
-//     auto        n1 = std::make_shared<Node>();
-//     auto        n2 = std::make_shared<Node>();
+    /* ノード集合と初期化 */
+    std::vector<std::shared_ptr<ast::AstNode>> nodes;
+    for (int i = 0; i < kNodes; ++i) {
+        auto n = makeNode(i + 1000);
+        n->inputs.resize(kSlots, std::monostate{});
+        nodes.push_back(n);
+    }
 
-//     ast::SubEdge e1{VariableType::Int, n1, 0, n2, 1};
-//     auto         rs = tr.reconnect_sub_edge(n2, 0, e1);
-//     EXPECT_EQ(rs.action, DiffStep::Type::ReconnectSubEdge);
-//     ASSERT_TRUE(std::holds_alternative<ast::SubEdge>(n2->inputs[0]));
-//     auto got = std::get<ast::SubEdge>(n2->inputs[0]);
-//     EXPECT_EQ(got.from.lock(), n1);
-//     EXPECT_EQ(got.to.lock(), n2);
-// }
+    /* 乱択操作列 */
+    for (int step = 0; step < kSteps; ++step) {
+        int op    = *rc::gen::inRange(0, 2);  // 0:assign 1:cut
+        int n_idx = *rc::gen::inRange(0, kNodes);
+        int slot  = *rc::gen::inRange(0, kSlots);
+
+        auto parents_before = snapshotParents(nodes);
+
+        try {
+            if (op == 0) {
+                int kind = *rc::gen::inRange(0, 3);  // 0:child 1:subedge 2:int
+                if (kind == 0) {
+                    ast::assign(nodes[n_idx], slot, nodes[*rc::gen::inRange(0, kNodes)]);
+                } else if (kind == 1) {
+                    auto from = nodes[*rc::gen::inRange(0, kNodes)];
+                    ast::assign(nodes[n_idx], slot, ast::SubEdge{from, 0});
+                } else {
+                    ast::assign(nodes[n_idx], slot, *rc::gen::arbitrary<std::int64_t>());
+                }
+            } else {
+                ast::cut(nodes[n_idx], slot);
+            }
+        } catch (const std::domain_error&) {
+            /* 例外が飛んでも親リンクが壊れていないか比較 */
+            RC_ASSERT(parents_before == snapshotParents(nodes));
+        }
+    }
+
+    RC_ASSERT(forestIsCycleFree(nodes));
+}
