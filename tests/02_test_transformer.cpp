@@ -37,7 +37,8 @@ bool inputIsSubEdge(const std::shared_ptr<ast::AstNode>& n, std::size_t slot, co
     return se->output_index == e.output_index && se->source.lock() == e.source.lock();
 }
 
-bool hasBackRef(const std::shared_ptr<ast::AstNode>& from, std::size_t outIdx, const std::shared_ptr<ast::AstNode>& dst,
+bool hasBackRef(const std::shared_ptr<ast::AstNode>& from, std::size_t outIdx, const std::shared_ptr<ast::AstNode>&
+dst,
                 std::size_t slot) {
     for (auto& ref : from->sub_output_references)
         if (ref.src_index == outIdx && !ref.dst_node.expired() && ref.dst_node.lock() == dst && ref.dst_slot == slot)

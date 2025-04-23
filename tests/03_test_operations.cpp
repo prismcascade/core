@@ -176,8 +176,10 @@ TEST(Detach, Detach_KeepInnerInner) {
     auto B = make_node(91);
     auto C = make_node(92);
     A->inputs.resize(1, std::monostate{});
+    B->inputs.resize(1, std::monostate{});
     C->inputs.resize(1, std::monostate{});
     ast::substitute(A, 0, B);
+    ast::substitute(B, 0, C);
     ast::substitute(C, 0, ast::SubEdge{A, 0});  // A→C (両者 subtree)
 
     auto steps = ast::detach_cross_edges(A);
