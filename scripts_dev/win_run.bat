@@ -1,20 +1,35 @@
+@echo off
 
-mkdir build
-cd build
+rem === build ===
+if not exist "build\" (
+    mkdir "build"  || goto :error
+)
+cd build              || goto :error
+chcp 65001            || goto :error
 
-chcp 65001
+cmake ..              || goto :error
+cmake --build . --parallel --config RelWithDebInfo || goto :error
 
-cmake ..
-cmake --build . --parallel --config RelWithDebInfo
-rem cmake --build . --config RelWithDebInfo
-
-@REM exit
-
-rem ===== run all test executables =====
+rem === run all test executables ===
 for %%f in (tests\RelWithDebInfo\*.exe) do (
     echo Running %%f
-    call "%%f"
+    call "%%f"       || goto :error
 )
 
-rem ===== run CLI =====
-call cli\RelWithDebInfo\prismcascade_cli.exe
+rem === install plugins ===
+if not exist "cli\RelWithDebInfo\plugins" (
+    mkdir "cli\RelWithDebInfo\plugins" || goto :error
+)
+copy /Y "sample_plugins\RelWithDebInfo\*.dll" "cli\RelWithDebInfo\plugins\" || goto :error
+
+rem === run CLI ===
+call cli\RelWithDebInfo\prismcascade_cli.exe || goto :error
+
+echo.
+echo === done ===
+goto :eof
+
+:error
+echo.
+echo *** build stopped: ERRORLEVEL=%errorlevel% ***
+exit /b %errorlevel%
