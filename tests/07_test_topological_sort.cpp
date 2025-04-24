@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <rapidcheck/gtest.h>
 
+#include <algorithm>
 #include <prismcascade/ast/operations.hpp>
 #include <prismcascade/scheduler/topological_sort.hpp>
 
@@ -11,20 +12,29 @@ static std::shared_ptr<ast::AstNode> mk(uint64_t id) { return ast::make_node("du
 
 static bool ranks_uniquely_topo(const std::unordered_map<std::int64_t, schedule::RankInfo>& tbl,
                                 const std::shared_ptr<ast::AstNode>&                        n) {
-    if (!n) return true;
-    uint32_t rk = tbl.at(n->plugin_instance_handler).rank;
-    for (const auto& in : n->inputs) {
-        if (auto p = std::get_if<std::shared_ptr<ast::AstNode>>(&in); p && *p) {
-            if (!(rk < tbl.at((*p)->plugin_instance_handler).rank)) return false;
-            if (!ranks_uniquely_topo(tbl, *p)) return false;
-        } else if (auto se = std::get_if<ast::SubEdge>(&in)) {
-            if (auto s = se->source.lock()) {
-                if (!(rk < tbl.at(s->plugin_instance_handler).rank)) return false;
-                if (!ranks_uniquely_topo(tbl, s)) return false;
+    if (!n) return true;                                    // 空なら常にOK
+    uint32_t rk = tbl.at(n->plugin_instance_handler).rank;  // rank取得
+    for (const auto& input : n->inputs) {
+        if (auto child = std::get_if<std::shared_ptr<ast::AstNode>>(&input); child && *child) {
+            // 葉のほうが先に計算される（値が小さい）
+            if (!(rk > tbl.at((*child)->plugin_instance_handler).rank)) return false;
+            if (!ranks_uniquely_topo(tbl, *child)) return false;
+        } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input)) {
+            if (auto sub_edge_source = sub_edge->source.lock()) {
+                // 葉のほうが先に計算される（値が小さい）
+                if (!(rk > tbl.at(sub_edge_source->plugin_instance_handler).rank)) return false;
+                if (!ranks_uniquely_topo(tbl, sub_edge_source)) return false;
             }
         }
     }
     return true;
+}
+
+static bool hasEdge(const std::shared_ptr<ast::AstNode>& dst, const std::shared_ptr<ast::AstNode>& src) {
+    for (const auto& in : dst->inputs)
+        if (auto p = std::get_if<std::shared_ptr<ast::AstNode>>(&in))
+            if (*p == src) return true;
+    return false;
 }
 
 /* ========== テスト 1 : Linear chain ========= */
@@ -43,6 +53,9 @@ TEST(TopoSort, LinearChain) {
     for (auto& kv : r.ranks) uniq.insert(kv.second.rank);
     EXPECT_EQ(uniq.size(), 3u);
     EXPECT_TRUE(ranks_uniquely_topo(r.ranks, A));
+    for (auto&& [handler, rank_info] : r.ranks)
+        std::cout << "handler = " << handler << ", rank = " << rank_info.rank << ", [" << rank_info.pre_ts << ", "
+                  << rank_info.post_ts << "]" << std::endl;
 }
 
 /* ========== テスト 2 : Fork-merge ========= */
@@ -159,4 +172,124 @@ RC_GTEST_PROP(TopoSortProp, RandomCycleDetected, ()) {
     RC_ASSERT(r.ranks.empty());
     RC_ASSERT(!r.cycle_path.empty());
     RC_ASSERT(r.cycle_path.front() == r.cycle_path.back());
+}
+
+// ── 1. rank & edge 順序性 ──────────────────────────────
+TEST(TopoSort, RankOrderRespectsEdges) {
+    auto A = mk(1);
+    auto B = mk(2);
+    auto C = mk(3);
+    A->inputs.resize(1, B);  // A ← B
+    B->inputs.resize(1, C);  // B ← C
+
+    auto r = schedule::topological_sort(A);
+    ASSERT_TRUE(r.cycle_path.empty());
+    ASSERT_EQ(r.ranks.size(), 3u);
+
+    EXPECT_LT(r.ranks[C->plugin_instance_handler].rank, r.ranks[B->plugin_instance_handler].rank);
+    EXPECT_LT(r.ranks[B->plugin_instance_handler].rank, r.ranks[A->plugin_instance_handler].rank);
+}
+
+// ── 2. pre/post ts 含有性 (親は子より広い区間) ─────────
+TEST(TopoSort, PrePostIntervalContainsChildren) {
+    auto P = mk(10);
+    auto C = mk(11);
+    P->inputs.resize(1, C);
+
+    auto        r  = schedule::topological_sort(P);
+    const auto& pi = r.ranks[P->plugin_instance_handler];
+    const auto& ci = r.ranks[C->plugin_instance_handler];
+
+    ASSERT_LT(pi.pre_ts, ci.pre_ts);
+    ASSERT_LT(ci.post_ts, pi.post_ts);
+    ASSERT_LT(ci.pre_ts, ci.post_ts);
+}
+
+// ── 3. self-loop cycle detection ───────────────────────
+TEST(TopoSort, DetectSelfLoop) {
+    auto N = mk(20);
+    N->inputs.resize(1, N);  // self loop
+
+    auto res = schedule::topological_sort(N);
+    ASSERT_TRUE(res.ranks.empty());
+    ASSERT_EQ(res.cycle_path.size(), 2u);  // N → N
+
+    EXPECT_EQ(res.cycle_path.front(), N);
+    EXPECT_EQ(res.cycle_path.back(), N);
+}
+
+// ── 4. 2 ノード cycle path correctness ────────────────
+TEST(TopoSort, CyclePathMatchesEdges) {
+    auto X = mk(30);
+    auto Y = mk(31);
+    X->inputs.resize(1, Y);
+    Y->inputs.resize(1, X);
+
+    auto res = schedule::topological_sort(X);
+    ASSERT_TRUE(res.ranks.empty());
+    ASSERT_EQ(res.cycle_path.size(), 3u);  // X→Y→X
+
+    for (size_t i = 0; i + 1 < res.cycle_path.size(); ++i)
+        EXPECT_TRUE(hasEdge(res.cycle_path[i + 1], res.cycle_path[i]));
+}
+/*──────────────────────────
+   last_consumer_rank  の検証
+ *─────────────────────────*/
+
+/* 1. Linear chain  A←B←C  */
+TEST(TopoSort_Last, LinearChain) {
+    auto A = mk(501), B = mk(502), C = mk(503);
+    A->inputs.resize(1, std::monostate{});
+    B->inputs.resize(1, std::monostate{});
+    ast::substitute(A, 0, B);
+    ast::substitute(B, 0, C);
+
+    auto r = schedule::topological_sort(A);
+    ASSERT_TRUE(r.cycle_path.empty());
+
+    auto rankA = r.ranks[A->plugin_instance_handler].rank;
+    auto rankB = r.ranks[B->plugin_instance_handler].rank;
+    auto rankC = r.ranks[C->plugin_instance_handler].rank;
+
+    EXPECT_EQ(r.ranks[C->plugin_instance_handler].last_consumer_rank, rankB);
+    EXPECT_EQ(r.ranks[B->plugin_instance_handler].last_consumer_rank, rankA);
+    EXPECT_EQ(r.ranks[A->plugin_instance_handler].last_consumer_rank, rankA);  // 自分のみ
+}
+
+/* 2. Fork  R consumes X,Y  &  M also consumes X,Y */
+TEST(TopoSort_Last, ForkMerge) {
+    auto R = mk(510), X = mk(511), Y = mk(512), M = mk(513);
+    R->inputs.resize(2, std::monostate{});
+    M->inputs.resize(2, std::monostate{});
+
+    ast::substitute(R, 0, X);
+    ast::substitute(R, 1, Y);
+    ast::substitute(M, 0, X);
+    ast::substitute(M, 1, Y);
+
+    auto r = schedule::topological_sort(M);
+    ASSERT_TRUE(r.cycle_path.empty());
+
+    auto rankR = r.ranks[R->plugin_instance_handler].rank;
+    auto rankM = r.ranks[M->plugin_instance_handler].rank;
+
+    EXPECT_EQ(r.ranks[X->plugin_instance_handler].last_consumer_rank, std::max(rankR, rankM));
+    EXPECT_EQ(r.ranks[Y->plugin_instance_handler].last_consumer_rank, std::max(rankR, rankM));
+}
+
+/* 3. SubEdge external consumer */
+TEST(TopoSort_Last, ExternalSubEdgeConsumer) {
+    auto A = mk(520), B = mk(521), C = mk(522);
+    B->inputs.resize(1, std::monostate{});
+    C->inputs.resize(1, std::monostate{});
+    ast::substitute(B, 0, A);                   // main-child
+    ast::substitute(C, 0, ast::SubEdge{A, 0});  // external consumer
+
+    auto r = schedule::topological_sort(B);
+    ASSERT_TRUE(r.cycle_path.empty());
+
+    auto rankB = r.ranks[B->plugin_instance_handler].rank;
+    auto rankC = r.ranks[C->plugin_instance_handler].rank;
+
+    EXPECT_EQ(r.ranks[A->plugin_instance_handler].last_consumer_rank, std::max(rankB, rankC));
 }

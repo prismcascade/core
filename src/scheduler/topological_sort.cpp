@@ -1,88 +1,102 @@
-/* ── prismcascade/schedule/toposort.cpp ─────────────────────────
-   DFS でトポロジカルソート。
-   Visiting → Visiting の back-edge を検出した瞬間、再帰スタックから閉路パスを抽出。
-   ─────────────────────────────────────────────────────────── */
 #include <algorithm>
-#include <prismcascade/ast/node.hpp>
 #include <prismcascade/scheduler/topological_sort.hpp>
-#include <stack>
-#include <stdexcept>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 namespace prismcascade::schedule {
 namespace {
 
-enum class Mark : uint8_t { Initial, Visiting, Done };
+// ─── DFS colour marks ──────────────────────────────────────────
+enum class Mark : std::uint8_t { initial, visiting, done };
+using NodePtr = std::shared_ptr<ast::AstNode>;
 
-/*---------------------------------------------------------------
-   再帰 DFS 。
-   成功: true
-   閉路: false & cycle_path にパスを設定
- ----------------------------------------------------------------*/
-bool dfs_visit(const std::shared_ptr<ast::AstNode>& v, std::unordered_map<std::int64_t, Mark>& mark,
-               std::vector<std::shared_ptr<ast::AstNode>>& stack,
-               std::vector<std::shared_ptr<ast::AstNode>>& post_order,
-               std::vector<std::shared_ptr<ast::AstNode>>& cycle_path) {
+// ------------- 再帰 DFS ----------------------------------------
+bool dfs(const NodePtr& v, std::unordered_map<std::int64_t, Mark>& mark,
+         std::unordered_map<std::int64_t, RankInfo>& info, std::vector<NodePtr>& callstack, std::vector<NodePtr>& topo,
+         std::vector<NodePtr>& cycle, timestamp_t& counter) {
     if (!v) return true;
-    std::int64_t id = v->plugin_instance_handler;
-    auto&        m  = mark[id];
+    const auto id = v->plugin_instance_handler;
 
-    if (m == Mark::Visiting) {  // 後退辺: stack上に閉路が存在
-        auto it = std::find_if(stack.begin(), stack.end(), [&](const std::shared_ptr<ast::AstNode>& p) {
-            return p->plugin_instance_handler == id;
-        });
-        cycle_path.assign(it, stack.end());
-        cycle_path.push_back(v);  // 戻ってきて閉路を閉じる
-        return false;
+    switch (mark[id]) {
+        case Mark::visiting: {  // back-edge → cycle
+            auto it = std::find_if(callstack.begin(), callstack.end(),
+                                   [&](const NodePtr& p) { return p->plugin_instance_handler == id; });
+            cycle.assign(it, callstack.end());
+            cycle.push_back(v);
+            return false;
+        }
+        case Mark::done:
+            return true;
+        default:;
     }
-    if (m == Mark::Done) return true;
 
-    m = Mark::Visiting;
-    stack.push_back(v);
+    mark[id] = Mark::visiting;
+    callstack.push_back(v);
 
-    auto push_child = [&](const std::shared_ptr<ast::AstNode>& n) -> bool {
-        return dfs_visit(n, mark, stack, post_order, cycle_path);
-    };
+    RankInfo& ri = info[id];
+    ri.pre_ts    = ++counter;  // pre-order
 
-    // main-child ＋ SubEdge-source
+    auto recur = [&](const NodePtr& n) { return dfs(n, mark, info, callstack, topo, cycle, counter); };
+
     for (const auto& in : v->inputs) {
-        if (auto p = std::get_if<std::shared_ptr<ast::AstNode>>(&in)) {
-            if (*p && !push_child(*p)) return false;
+        if (auto p = std::get_if<NodePtr>(&in)) {
+            if (*p && !recur(*p)) return false;
         } else if (auto se = std::get_if<ast::SubEdge>(&in)) {
             if (auto src = se->source.lock())
-                if (!push_child(src)) return false;
+                if (!recur(src)) return false;
         }
     }
 
-    stack.pop_back();
-    m = Mark::Done;
-    post_order.push_back(v);
+    ri.post_ts = ++counter;  // post-order
+    mark[id]   = Mark::done;
+    callstack.pop_back();
+    topo.push_back(v);  // 葉→根の順
     return true;
 }
 
 }  // namespace
 
-/*================================================================
-   try_topo_sort : 成功/失敗に応じ RankTable or cycle_path を返す
- =================================================================*/
+// =================================================================
 TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     TopoResult res;
-    if (!root) return res;  // empty → failure (cycle_path == {})
+    if (!root) return res;
 
     std::unordered_map<std::int64_t, Mark>     mark;
-    std::vector<std::shared_ptr<ast::AstNode>> stack;
-    std::vector<std::shared_ptr<ast::AstNode>> post;
+    std::unordered_map<std::int64_t, RankInfo> info;
+    std::vector<NodePtr>                       callstack, topo;
+    timestamp_t                                counter = 0;
 
-    if (!dfs_visit(root, mark, stack, post, res.cycle_path)) return res;  // cycle_path が埋まっている
+    // 普通にDFS
+    const bool success = dfs(root, mark, info, callstack, topo, res.cycle_path, counter);
+    if (!success) return res;  // ranks 空・cycle_path に閉路
 
-    std::reverse(post.begin(), post.end());
-    for (std::uint32_t r = 0; r < post.size(); ++r) {
-        RankInfo info;
-        info.rank = r;
-        res.ranks.emplace(post[r]->plugin_instance_handler, info);
+    // Rank を振る
+    std::int64_t rank = 0;
+    for (const auto& node : topo) {  // topo は葉→根 順
+        auto& ri              = info[node->plugin_instance_handler];
+        ri.rank               = rank++;   // 葉 0, 親ほど大
+        ri.last_consumer_rank = ri.rank;  // 最低限，自分自身は出力の寿命内であるべき
     }
+
+    // last_consumer_rank を伝搬 (root 側から辿る)
+    for (const auto& node : topo) {
+        auto consumer_rank = info[node->plugin_instance_handler].rank;  // 現在ノード
+        auto update        = [&](const NodePtr& prod) {
+            if (!prod) return;
+            auto& pi              = info[prod->plugin_instance_handler];
+            pi.last_consumer_rank = std::max(pi.last_consumer_rank, consumer_rank);
+        };
+        for (const auto& input : node->inputs) {
+            if (auto child = std::get_if<NodePtr>(&input); child && *child)
+                update(*child);
+            else if (auto sub_edge = std::get_if<ast::SubEdge>(&input))
+                if (auto sub_edge_source = sub_edge->source.lock()) update(sub_edge_source);
+        }
+    }
+
+    // Rank Table を構築する
+    for (const auto& node : topo) res.ranks.emplace(node->plugin_instance_handler, info[node->plugin_instance_handler]);
+
     return res;
 }
 
