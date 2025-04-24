@@ -1,5 +1,6 @@
 #include <iostream>
 #include <prismcascade/plugin/dynamic_library.hpp>
+#include <prismcascade/scheduler/time.hpp>
 
 int main() {
     using namespace prismcascade;

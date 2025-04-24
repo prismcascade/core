@@ -50,6 +50,7 @@ target_link_libraries(prism_tests
     rapidcheck_gtest      # RapidCheck + gtest bridge（内部で rapidcheck をリンク）
 )
 
+# UTF‑8（MSVC）
 target_compile_options(prism_tests PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 

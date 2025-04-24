@@ -20,6 +20,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # 必須ライブラリ（ヘッダオンリー）
 # ──────────────────────────────────────────────
 include(FetchContent)
+
 FetchContent_Declare(
   boost_multiprecision
   GIT_REPOSITORY https://github.com/boostorg/multiprecision.git
@@ -28,9 +29,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(boost_multiprecision)
 
+FetchContent_Declare(
+  boost_config
+  GIT_REPOSITORY https://github.com/boostorg/config.git
+  GIT_TAG        boost-1.85.0
+)
+FetchContent_MakeAvailable(boost_config)
+
 add_library(Boost::boost INTERFACE IMPORTED)
+
 target_include_directories(Boost::boost INTERFACE
   ${boost_multiprecision_SOURCE_DIR}/include)
+
+target_include_directories(Boost::boost INTERFACE
+  ${boost_config_SOURCE_DIR}/include)
 
 # ──────────────────────────────────────────────
 # オプション：テスト / サンプル
