@@ -10,8 +10,8 @@ using namespace prismcascade;
 /* ------------- ヘルパ --------------- */
 static std::shared_ptr<ast::AstNode> mk(uint64_t id) { return ast::make_node("dummy", id, id); }
 
-static bool ranks_uniquely_topo(const std::unordered_map<std::int64_t, schedule::RankInfo>& tbl,
-                                const std::shared_ptr<ast::AstNode>&                        n) {
+static bool ranks_uniquely_topo(const std::unordered_map<std::int64_t, scheduler::RankInfo>& tbl,
+                                const std::shared_ptr<ast::AstNode>&                         n) {
     if (!n) return true;                                    // 空なら常にOK
     uint32_t rk = tbl.at(n->plugin_instance_handler).rank;  // rank取得
     for (const auto& input : n->inputs) {
@@ -45,7 +45,7 @@ TEST(TopoSort, LinearChain) {
     ast::substitute(A, 0, B);
     ast::substitute(B, 0, C);
 
-    auto r = schedule::topological_sort(A);
+    auto r = scheduler::topological_sort(A);
     ASSERT_TRUE(r.cycle_path.empty());
     ASSERT_EQ(r.ranks.size(), 3u);
 
@@ -69,7 +69,7 @@ TEST(TopoSort, ForkMerge) {
     ast::substitute(R, 0, B);                   // final output depends on both
     ast::substitute(R, 1, C);
 
-    auto r = schedule::topological_sort(R);
+    auto r = scheduler::topological_sort(R);
     ASSERT_TRUE(r.cycle_path.empty());
     EXPECT_EQ(r.ranks.size(), 4u);
     EXPECT_TRUE(ranks_uniquely_topo(r.ranks, A));
@@ -86,7 +86,7 @@ TEST(TopoSort, MixedEdges) {
     ast::substitute(R, 0, X);
     ast::substitute(R, 1, Y);
 
-    auto r = schedule::topological_sort(R);
+    auto r = scheduler::topological_sort(R);
     EXPECT_TRUE(r.cycle_path.empty());
     EXPECT_EQ(r.ranks.size(), 3u);
     EXPECT_TRUE(ranks_uniquely_topo(r.ranks, R));
@@ -97,7 +97,7 @@ TEST(TopoSort, RanksUnique) {
     auto A = mk(30), B = mk(31);
     A->inputs.resize(1, std::monostate{});
     ast::substitute(A, 0, B);
-    auto                         r = schedule::topological_sort(A);
+    auto                         r = scheduler::topological_sort(A);
     std::unordered_set<uint32_t> uniq;
     for (auto& kv : r.ranks) uniq.insert(kv.second.rank);
     EXPECT_EQ(uniq.size(), r.ranks.size());
@@ -111,7 +111,7 @@ TEST(TopoSortCycle, SubEdgeCycle) {
     ast::substitute(A, 0, ast::SubEdge{B, 0});
     ast::substitute(B, 0, ast::SubEdge{A, 0});  // cycle
 
-    auto r = schedule::topological_sort(A);
+    auto r = scheduler::topological_sort(A);
     EXPECT_TRUE(r.ranks.empty());
     ASSERT_FALSE(r.cycle_path.empty());
     EXPECT_EQ(r.cycle_path.front(), r.cycle_path.back());
@@ -127,7 +127,7 @@ TEST(TopoSortCycle, PathLength) {
     ast::substitute(B, 0, ast::SubEdge{A, 0});
     ast::substitute(C, 0, ast::SubEdge{B, 0});  // 3-cycle
 
-    auto r = schedule::topological_sort(A);
+    auto r = scheduler::topological_sort(A);
     ASSERT_GE(r.cycle_path.size(), 2u);
 }
 
@@ -149,7 +149,7 @@ RC_GTEST_PROP(TopoSortProp, RandomAcyclicDag, ()) {
     v[0]->inputs.resize(n - 1, std::monostate{});  // root に (n-1) スロット確保
     for (std::size_t i = 1; i < n; ++i) ast::substitute(v[0], i - 1, ast::SubEdge{v[i], 0});  // 依存辺を張る
     // 実行
-    auto r = schedule::topological_sort(v[0]);
+    auto r = scheduler::topological_sort(v[0]);
     RC_ASSERT(r.cycle_path.empty());
     RC_ASSERT(r.ranks.size() == n);
     RC_ASSERT(ranks_uniquely_topo(r.ranks, v[0]));
@@ -168,7 +168,7 @@ RC_GTEST_PROP(TopoSortProp, RandomCycleDetected, ()) {
     // add subedge back-edge
     ast::substitute(v[n - 1], 0, ast::SubEdge{v[1], 0});
 
-    auto r = schedule::topological_sort(v[0]);
+    auto r = scheduler::topological_sort(v[0]);
     RC_ASSERT(r.ranks.empty());
     RC_ASSERT(!r.cycle_path.empty());
     RC_ASSERT(r.cycle_path.front() == r.cycle_path.back());
@@ -182,7 +182,7 @@ TEST(TopoSort, RankOrderRespectsEdges) {
     A->inputs.resize(1, B);  // A ← B
     B->inputs.resize(1, C);  // B ← C
 
-    auto r = schedule::topological_sort(A);
+    auto r = scheduler::topological_sort(A);
     ASSERT_TRUE(r.cycle_path.empty());
     ASSERT_EQ(r.ranks.size(), 3u);
 
@@ -196,7 +196,7 @@ TEST(TopoSort, PrePostIntervalContainsChildren) {
     auto C = mk(11);
     P->inputs.resize(1, C);
 
-    auto        r  = schedule::topological_sort(P);
+    auto        r  = scheduler::topological_sort(P);
     const auto& pi = r.ranks[P->plugin_instance_handler];
     const auto& ci = r.ranks[C->plugin_instance_handler];
 
@@ -210,7 +210,7 @@ TEST(TopoSort, DetectSelfLoop) {
     auto N = mk(20);
     N->inputs.resize(1, N);  // self loop
 
-    auto res = schedule::topological_sort(N);
+    auto res = scheduler::topological_sort(N);
     ASSERT_TRUE(res.ranks.empty());
     ASSERT_EQ(res.cycle_path.size(), 2u);  // N → N
 
@@ -225,7 +225,7 @@ TEST(TopoSort, CyclePathMatchesEdges) {
     X->inputs.resize(1, Y);
     Y->inputs.resize(1, X);
 
-    auto res = schedule::topological_sort(X);
+    auto res = scheduler::topological_sort(X);
     ASSERT_TRUE(res.ranks.empty());
     ASSERT_EQ(res.cycle_path.size(), 3u);  // X→Y→X
 
@@ -244,7 +244,7 @@ TEST(TopoSort_Last, LinearChain) {
     ast::substitute(A, 0, B);
     ast::substitute(B, 0, C);
 
-    auto r = schedule::topological_sort(A);
+    auto r = scheduler::topological_sort(A);
     ASSERT_TRUE(r.cycle_path.empty());
 
     auto rankA = r.ranks[A->plugin_instance_handler].rank;
@@ -267,7 +267,7 @@ TEST(TopoSort_Last, ForkMerge) {
     ast::substitute(M, 0, X);
     ast::substitute(M, 1, Y);
 
-    auto r = schedule::topological_sort(M);
+    auto r = scheduler::topological_sort(M);
     ASSERT_TRUE(r.cycle_path.empty());
 
     auto rankR = r.ranks[R->plugin_instance_handler].rank;
@@ -285,7 +285,7 @@ TEST(TopoSort_Last, ExternalSubEdgeConsumer) {
     ast::substitute(B, 0, A);                   // main-child
     ast::substitute(C, 0, ast::SubEdge{A, 0});  // external consumer
 
-    auto r = schedule::topological_sort(B);
+    auto r = scheduler::topological_sort(B);
     ASSERT_TRUE(r.cycle_path.empty());
 
     auto rankB = r.ranks[B->plugin_instance_handler].rank;

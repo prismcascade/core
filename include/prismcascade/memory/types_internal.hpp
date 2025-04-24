@@ -1,9 +1,12 @@
+#pragma once
+
 #include <memory>
 #include <prismcascade/common/types.hpp>
 #include <string>
 #include <vector>
 
 namespace prismcascade {
+namespace memory {
 
 // パラメータのメモリ実体
 class ParameterMemory {
@@ -136,6 +139,7 @@ class ParameterPackMemory {
     ParameterPack          parameter_pack_instance_{};
     std::vector<Parameter> buffer_;
 };
+}  // namespace memory
 
 // プラグインのメタデータ
 std::string to_string(VariableType variable_type);

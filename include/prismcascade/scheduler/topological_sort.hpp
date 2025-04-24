@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace prismcascade::schedule {
+namespace prismcascade::scheduler {
 
 struct RankInfo {
     std::int64_t rank               = 0;  // 葉 0  → 根へ昇順
@@ -24,4 +24,4 @@ struct TopoResult {
 /// 失敗（閉路検出）時は cycle_path にパスを格納し ranks は空。
 TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root);
 
-}  // namespace prismcascade::schedule
+}  // namespace prismcascade::scheduler

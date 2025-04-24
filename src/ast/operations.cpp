@@ -33,8 +33,8 @@ std::shared_ptr<AstNode> make_node(const std::string& plugin_uuid, std::uint64_t
     n->parent.reset();
 
     /* DLL 側実メモリはまだ不要なので空のまま */
-    n->input_parameters  = std::make_shared<ParameterPackMemory>();
-    n->output_parameters = std::make_shared<ParameterPackMemory>();
+    n->input_parameters  = std::make_shared<memory::ParameterPackMemory>();
+    n->output_parameters = std::make_shared<memory::ParameterPackMemory>();
 
     return n;
 }

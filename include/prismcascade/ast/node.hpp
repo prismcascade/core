@@ -44,8 +44,8 @@ struct AstNode {
     std::vector<input_t> inputs;
 
     // DLL側のメモリ
-    std::shared_ptr<ParameterPackMemory> input_parameters;
-    std::shared_ptr<ParameterPackMemory> output_parameters;
+    std::shared_ptr<memory::ParameterPackMemory> input_parameters;
+    std::shared_ptr<memory::ParameterPackMemory> output_parameters;
 
     // Clip として振る舞う場合
     std::optional<VideoMetaData> video_meta;

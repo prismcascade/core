@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace prismcascade::schedule {
+namespace prismcascade::scheduler {
 namespace {
 
 // ─── DFS colour marks ──────────────────────────────────────────
@@ -100,4 +100,4 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     return res;
 }
 
-}  // namespace prismcascade::schedule
+}  // namespace prismcascade::scheduler

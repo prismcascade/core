@@ -27,7 +27,7 @@
 //
 // スケジューラ
 //
-#include <prismcascade/scheduler/rendering_scheduler.hpp>
+#include <prismcascade/schedule/rendering_scheduler.hpp>
 
 //
 // ユーティリティ

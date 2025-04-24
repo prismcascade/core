@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 namespace prismcascade {
+namespace memory {
 
 /* ────────────────────────────────────────────── */
 /*  ParameterMemory (base)                        */
@@ -223,4 +224,5 @@ std::string to_string(PluginType variable_type) {
     }
 }
 
+}  // namespace memory
 }  // namespace prismcascade
