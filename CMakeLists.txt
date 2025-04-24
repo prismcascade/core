@@ -17,6 +17,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ──────────────────────────────────────────────
+# 必須ライブラリ（ヘッダオンリー）
+# ──────────────────────────────────────────────
+include(FetchContent)
+FetchContent_Declare(
+  boost_multiprecision
+  GIT_REPOSITORY https://github.com/boostorg/multiprecision.git
+  GIT_TAG        boost-1.85.0
+  GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(boost_multiprecision)
+
+add_library(Boost::boost INTERFACE IMPORTED)
+target_include_directories(Boost::boost INTERFACE
+  ${boost_multiprecision_SOURCE_DIR}/include)
+
+# ──────────────────────────────────────────────
 # オプション：テスト / サンプル
 # ──────────────────────────────────────────────
 option(PRISM_BUILD_TESTS   "Build unit/property tests" ON)

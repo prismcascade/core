@@ -14,6 +14,10 @@ file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
 add_library(prismcascade STATIC ${LIB_SOURCES})
 add_library(prismcascade::core ALIAS prismcascade)
 
+# ルートで定義したヘッダオンリーターゲット Boost::boost をリンク
+target_link_libraries(prismcascade
+  PUBLIC Boost::boost)
+
 # 3. インクルードディレクトリ
 target_include_directories(prismcascade
   PUBLIC

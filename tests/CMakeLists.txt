@@ -45,6 +45,7 @@ target_include_directories(prism_tests PRIVATE
 target_link_libraries(prism_tests
   PRIVATE
     prismcascade::core    # 本体
+    Boost::boost
     gtest_main            # GoogleTest runner
     rapidcheck_gtest      # RapidCheck + gtest bridge（内部で rapidcheck をリンク）
 )
