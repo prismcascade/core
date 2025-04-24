@@ -14,6 +14,7 @@ rem === run all test executables ===
 for %%f in (tests\RelWithDebInfo\*.exe) do (
     echo Running %%f
     call "%%f"       || goto :error
+    @REM call "%%f" --gtest_filter="TopoSort*"       || goto :error
 )
 
 rem === install plugins ===
