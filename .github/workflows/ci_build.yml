@@ -14,30 +14,43 @@ jobs:
         os: [ubuntu-latest, windows-latest]
 
     steps:
+      # 1. 取得
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true     # external/ submodule を取得
+          submodules: true      # external/ サブモジュールも取得
 
-      - name: Install LLVM on Windows
+      # 2. Ninja をインストール（OS 共通）
+      - name: Setup Ninja
+        uses: aminya/setup-ninja@v1                # gnu-make 互換 action
+
+      # 3. Windows 専用：MSVC & Clang
+      - name: Install MSVC env
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1  # sets up MSVC environment
-      - name: Install Clang on Windows
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Install Clang 17 (Windows)
         if: runner.os == 'Windows'
         uses: egor-tensin/setup-clang@v1
         with:
           version: 17
 
-      - name: Configure (CMake)
-        run: >
-          cmake -B build -G Ninja
-          -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-clang17.cmake
-          -DPRISM_BUILD_TESTS=ON
-          -DPRISM_BUILD_SAMPLES=OFF
-          -DCMAKE_BUILD_TYPE=Release
+      # 4. Linux 専用：Clang / Ninja は GitHub Runner にプリインストール済
+      #    追加パッケージが必要なら apt-get で ninja-build を入れるが
+      #    setup-ninja が解決してくれる。
 
+      # 5. CMake Configure
+      - name: Configure (CMake)
+        run: |
+          cmake -B build -G Ninja \
+            -DPRISM_BUILD_TESTS=ON \
+            -DPRISM_BUILD_SAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-clang17.cmake' || '' }}
+
+      # 6. Build
       - name: Build
         run: cmake --build build --parallel
 
+      # 7. Test
       - name: Run tests
         run: ctest --test-dir build --output-on-failure
