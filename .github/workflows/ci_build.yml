@@ -43,6 +43,7 @@ jobs:
 
     # 4. CMake Configure
     - name: Configure (CMake)
+      shell: bash
       run: |
         cmake -B build -G Ninja \
           ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-clang17.cmake' || '' }} \
