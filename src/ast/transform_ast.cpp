@@ -1,8 +1,8 @@
+#include <algorithm>
 #include <prismcascade/ast/transform_ast.hpp>
 #include <queue>
 #include <stdexcept>
 #include <unordered_set>
-#include <algorithm>
 
 namespace prismcascade::ast {
 
