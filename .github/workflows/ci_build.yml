@@ -7,62 +7,65 @@ on:
     branches: [ main ]
 
 jobs:
-  build-test:
+  build-and-test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ ubuntu-latest, windows-latest ]
 
     steps:
-      # 1. ソース取得（submodule を含む）
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+    #─────────────────────────────────────────────────────────────
+    # 0. 取得（サブモジュール込み）
+    #─────────────────────────────────────────────────────────────
+    - name: Checkout source
+      uses: actions/checkout@v4
+      with:
+        submodules: true
 
-      # 2. Windows 専用 : MSVC 環境と Clang17
-      - name: Setup MSVC environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1          # vcvars バッチ実行
+    #─────────────────────────────────────────────────────────────
+    # 1. Windows ランナーだけ MSVC と Clang-17 を用意
+    #─────────────────────────────────────────────────────────────
+    - name: MSVC environment
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1  # vcvars を実行して cl / nmake を PATH に
 
-      - name: Install Clang 17 (optional warnings)
-        if: runner.os == 'Windows'
-        uses: egor-tensin/setup-clang@v1
-        with:
-          version: 17
+    - name: Setup Clang-17 (optional warnings)
+      if: runner.os == 'Windows'
+      uses: egor-tensin/setup-clang@v1
+      with:
+        version: 17
 
-      # 3. CMake Configure
-      - name: Configure (CMake)
-        shell: bash
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cmake -B build -G "NMake Makefiles" \
-                  -DPRISM_BUILD_TESTS=ON \
-                  -DPRISM_BUILD_SAMPLES=OFF \
-                  -DCMAKE_BUILD_TYPE=Release
-          else
-            cmake -B build \
-                  -DPRISM_BUILD_TESTS=ON \
-                  -DPRISM_BUILD_SAMPLES=OFF \
-                  -DCMAKE_BUILD_TYPE=Release
-          fi
+    #─────────────────────────────────────────────────────────────
+    # 2. CMake configure
+    #─────────────────────────────────────────────────────────────
+    - name: Configure CMake
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          # NMake + MSVC/ClangCL で単一構成
+          cmake -B build -G "NMake Makefiles" \
+                -DPRISM_BUILD_TESTS=ON \
+                -DPRISM_BUILD_SAMPLES=OFF \
+                -DCMAKE_BUILD_TYPE=Release
+        else
+          # Linux: 既定の “Unix Makefiles”
+          cmake -B build \
+                -DPRISM_BUILD_TESTS=ON \
+                -DPRISM_BUILD_SAMPLES=OFF \
+                -DCMAKE_BUILD_TYPE=Release
+        fi
 
-      # 4. Build
-      - name: Build
-        shell: bash
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cmake --build build --config Release -- /m        # NMake 並列
-          else
-            cmake --build build -j"$(nproc)"
-          fi
+    #─────────────────────────────────────────────────────────────
+    # 3. Build（--parallel は CMake が各ジェネレータへ委譲）
+    #─────────────────────────────────────────────────────────────
+    - name: Build
+      shell: bash
+      run: cmake --build build --parallel --config Release
 
-      # 5. Test
-      - name: Run tests
-        shell: bash
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            ctest --test-dir build --output-on-failure -C Release
-          else
-            ctest --test-dir build --output-on-failure
-          fi
+    #─────────────────────────────────────────────────────────────
+    # 4. テスト実行
+    #   単一構成では --config 無視されるので共通で OK
+    #─────────────────────────────────────────────────────────────
+    - name: Run unit tests
+      shell: bash
+      run: ctest --test-dir build --output-on-failure --config Release
