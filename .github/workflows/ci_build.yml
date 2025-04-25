@@ -49,4 +49,9 @@ jobs:
     # 5. Test
     - name: Run tests
       shell: bash
-      run: ctest --test-dir build --output-on-failure --config Release
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          ctest --test-dir build --output-on-failure -C Release   # VS17 マルチ構成
+        else
+          ctest --test-dir build --output-on-failure               # Unix Makefiles
+        fi
