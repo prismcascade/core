@@ -16,7 +16,8 @@ class Scheduler {
         std::int64_t startup_buffer = 0;  // frame
     };
 
-    explicit Scheduler(const Options& opt = {});
+    Scheduler();
+    explicit Scheduler(const Options& opt);
 
     /* compile  : AST → Rank / Delay / SubDAG / ExecutionQueue 初期化   */
     void compile(const std::shared_ptr<ast::AstNode>& root);
