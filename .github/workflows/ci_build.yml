@@ -41,15 +41,27 @@ jobs:
       with:
         version: 17
 
+    - name: Install Ninja (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install -y ninja
+        echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+
     # 4. CMake Configure
     - name: Configure (CMake)
       shell: bash
       run: |
+        EXTRA=""
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          EXTRA="-DCMAKE_TOOLCHAIN_FILE=${GITHUB_WORKSPACE}/cmake/Toolchain-clang17.cmake"
+        fi
+
         cmake -B build -G Ninja \
-          ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-clang17.cmake' || '' }} \
-          -DPRISM_BUILD_TESTS=ON \
-          -DPRISM_BUILD_SAMPLES=OFF \
-          -DCMAKE_BUILD_TYPE=Release
+              -DPRISM_BUILD_TESTS=ON \
+              -DPRISM_BUILD_SAMPLES=OFF \
+              -DCMAKE_BUILD_TYPE=Release \
+              ${EXTRA}
 
     # 5. Build
     - name: Build
