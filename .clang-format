@@ -1,3 +1,8 @@
+# ---------- Windows と Linux で挙動をそろえる ----------
+LineEnding: LF
+UseCRLF: false
+SortIncludes: CaseSensitive
+
 # ---------- 基本 ----------
 BasedOnStyle: Google  # Google ルールをベース
 ColumnLimit: 120
@@ -18,5 +23,4 @@ AlignConsecutiveAssignments: true          # 連続代入を縦揃え
 AlignConsecutiveDeclarations: true
 
 # ---------- その他 ----------
-SortIncludes: true
 IncludeBlocks: Regroup

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 
 # すべての *.cpp を列挙
 file(GLOB PLUGIN_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -23,7 +23,7 @@ endforeach()
 
 
 # # plugins/twice/CMakeLists.txt
-# cmake_minimum_required(VERSION 3.21)
+# cmake_minimum_required(VERSION 3.24)
 # project(twice_plugin LANGUAGES C CXX)
 
 # # ───── 共有ライブラリ生成 ────────────────
