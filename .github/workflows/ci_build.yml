@@ -64,8 +64,7 @@ jobs:
 
     #─────────────────────────────────────────────────────────────
     # 4. テスト実行
-    #   単一構成では --config 無視されるので共通で OK
     #─────────────────────────────────────────────────────────────
     - name: Run unit tests
       shell: bash
-      run: ctest --test-dir build --output-on-failure --config Release
+      run: ctest --test-dir build --output-on-failure
