@@ -11,25 +11,25 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-    # 1. 取得（サブモジュール込み）
+    # 1 ─ 取得
     - uses: actions/checkout@v4
-      with:
-        submodules: true
+      with: { submodules: true }
 
-    # 2. Windows : MSVC 環境のみ
-    - name: Setup MSVC environment
+    # 2 ─ Windows: MSVC (cl.exe) + clang-cl 用環境
+    - name: Setup MSVC env
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
 
-    # 3. CMake configure
+    # 3 ─ CMake configure
     - name: Configure (CMake)
       shell: bash
       run: |
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          cmake -B build -G "NMake Makefiles" \
+          # clang-cl (+link.exe) を使う
+          cmake -B build -G "NMake Makefiles" -T ClangCL \
                 -DPRISM_BUILD_TESTS=ON \
                 -DPRISM_BUILD_SAMPLES=OFF \
                 -DCMAKE_BUILD_TYPE=Release
@@ -40,12 +40,12 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release
         fi
 
-    # 4. Build
+    # 4 ─ Build (並列)
     - name: Build
       shell: bash
       run: cmake --build build --parallel --config Release
 
-    # 5. Test
+    # 5 ─ Test
     - name: Run tests
       shell: bash
       run: ctest --test-dir build --output-on-failure
