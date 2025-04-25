@@ -48,4 +48,4 @@ jobs:
     # 5. Test
     - name: Run tests
       shell: bash
-      run: ctest --test-dir build --output-on-failure --config Release
+      run: ctest --test-dir build --output-on-failure
