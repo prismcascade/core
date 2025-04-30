@@ -33,12 +33,6 @@ static bool has_backref(const std::shared_ptr<ast::AstNode>& from, std::uint32_t
             return true;
     return false;
 }
-static void apply_diff(const std::vector<ast::AstDiffStep>& v, bool forward = true) {
-    if (forward)
-        for (auto& s : v) ast::assign(s.node, s.index, s.new_value);
-    else
-        for (auto it = v.rbegin(); it != v.rend(); ++it) ast::assign(it->node, it->index, it->old_value);
-}
 
 /* 1. 孤立ノード → 空スロット --------------------------------- */
 TEST(Substitute, Subst_IsolatedNodeToEmpty) {
@@ -49,9 +43,9 @@ TEST(Substitute, Subst_IsolatedNodeToEmpty) {
     auto d = ast::substitute(P, 0, C);
 
     EXPECT_TRUE(has_parent(C, P));
-    apply_diff(d, false);  // undo
+    undo(d);
     EXPECT_FALSE(has_parent(C, P));
-    apply_diff(d, true);  // redo
+    redo(d);
     EXPECT_TRUE(has_parent(C, P));
 }
 
@@ -66,23 +60,26 @@ TEST(Substitute, Subst_IsolatedNodeToFilled) {
     EXPECT_TRUE(has_parent(C, P));
     EXPECT_TRUE(std::holds_alternative<std::monostate>(P->inputs[0]) == false);
 
-    apply_diff(d, false);  // undo
+    undo(d);
     EXPECT_TRUE(std::holds_alternative<std::int64_t>(P->inputs[0]));
 }
 
 /* 3. ツリー内ノードを別場所へ移動 ----------------------------- */
 TEST(Substitute, Subst_MoveExistingNode) {
-    auto P = make_node(20);
-    P->inputs.resize(2, std::monostate{});
+    auto P1 = make_node(20);
+    auto P2 = make_node(20);
+    P1->inputs.resize(2, std::monostate{});
+    P2->inputs.resize(2, std::monostate{});
     auto C = make_node(21);
-    ast::substitute(P, 0, C);  // P[0] = C
+    ast::substitute(P1, 0, C);  // P[0] = C
 
-    auto d = ast::substitute(P, 1, C);  // move to slot1
+    auto d = ast::substitute(P2, 1, C);  // move to slot1
 
-    EXPECT_TRUE(std::holds_alternative<std::monostate>(P->inputs[0]));
-    EXPECT_TRUE(has_parent(C, P));
-    apply_diff(d, false);  // undo
-    EXPECT_TRUE(std::holds_alternative<std::shared_ptr<ast::AstNode>>(P->inputs[0]));
+    EXPECT_TRUE(std::holds_alternative<std::monostate>(P2->inputs[0]));
+    EXPECT_TRUE(has_parent(C, P2));
+    undo(d);
+    EXPECT_TRUE(std::holds_alternative<std::shared_ptr<ast::AstNode>>(P1->inputs[0]));
+    EXPECT_TRUE(has_parent(C, P1));
 }
 
 /* 4. 自分→子孫 で cycle 検出 ---------------------------------- */
@@ -132,9 +129,9 @@ TEST(Cut, Cut_Node_UndoRedo) {
 
     auto d = ast::cut(P, 0);  // remove C
     EXPECT_FALSE(has_parent(C, P));
-    apply_diff(d, false);  // undo
+    undo(d);
     EXPECT_TRUE(has_parent(C, P));
-    apply_diff(d, true);  // redo
+    redo(d);
     EXPECT_FALSE(has_parent(C, P));
 }
 
@@ -147,7 +144,7 @@ TEST(Cut, Cut_SubEdge_UndoRedo) {
 
     auto d = ast::cut(X, 0);
     EXPECT_FALSE(has_backref(A, 0, X, 0));
-    apply_diff(d, false);  // undo
+    undo(d);
     EXPECT_TRUE(has_backref(A, 0, X, 0));
 }
 
@@ -165,9 +162,12 @@ TEST(Detach, Detach_CrossEdges) {
     ASSERT_TRUE(has_backref(A, 0, Y, 0));
 
     auto steps = ast::detach_cross_edges(A);
-    apply_diff(steps, true);
     EXPECT_FALSE(has_backref(A, 0, X, 0));
     EXPECT_FALSE(has_backref(A, 0, Y, 0));
+
+    undo(steps);
+    ASSERT_TRUE(has_backref(A, 0, X, 0));
+    ASSERT_TRUE(has_backref(A, 0, Y, 0));
 }
 
 /* 10. detach keep inner-inner ---------------------------------- */
@@ -183,7 +183,6 @@ TEST(Detach, Detach_KeepInnerInner) {
     ast::substitute(C, 0, ast::SubEdge{A, 0});  // A→C (両者 subtree)
 
     auto steps = ast::detach_cross_edges(A);
-    apply_diff(steps, true);
     EXPECT_TRUE(has_backref(A, 0, C, 0));  // 残る
 }
 
@@ -196,7 +195,6 @@ TEST(Detach, Detach_KeepOuterOuter) {
 
     auto Z     = make_node(102);  // unrelated root
     auto steps = ast::detach_cross_edges(Z);
-    apply_diff(steps, true);
     EXPECT_TRUE(has_backref(X, 0, Y, 0));
 }
 
@@ -208,10 +206,10 @@ TEST(Detach, Detach_UndoRedo) {
     ast::substitute(X, 0, ast::SubEdge{A, 0});
 
     auto steps = ast::detach_cross_edges(A);
-    apply_diff(steps, true);
-    EXPECT_FALSE(has_backref(A, 0, X, 0));
-    apply_diff(steps, false);  // undo
+    undo(steps);
     EXPECT_TRUE(has_backref(A, 0, X, 0));
+    redo(steps);
+    EXPECT_FALSE(has_backref(A, 0, X, 0));
 }
 
 /* 13. Slot OOB エラー ----------------------------------------- */
@@ -244,8 +242,8 @@ RC_GTEST_PROP(Property, RC_Subst_Involution, ()) {
     auto d1 = ast::substitute(P, 0, v1);
     auto d2 = ast::substitute(P, 0, v2);
 
-    apply_diff(d2, false);
-    apply_diff(d1, false);
+    undo(d2);
+    undo(d1);
 
     RC_ASSERT(P->inputs[0].index() == 0);  // monostate に戻る
 }

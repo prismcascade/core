@@ -53,9 +53,9 @@ TEST(TopoSort, LinearChain) {
     for (auto& kv : r.ranks) uniq.insert(kv.second.rank);
     EXPECT_EQ(uniq.size(), 3u);
     EXPECT_TRUE(ranks_uniquely_topo(r.ranks, A));
-    for (auto&& [handler, rank_info] : r.ranks)
-        std::cout << "handler = " << handler << ", rank = " << rank_info.rank << ", [" << rank_info.pre_ts << ", "
-                  << rank_info.post_ts << "]" << std::endl;
+    // for (auto&& [handler, rank_info] : r.ranks)
+    //     std::cout << "handler = " << handler << ", rank = " << rank_info.rank << ", [" << rank_info.pre_ts << ", "
+    //               << rank_info.post_ts << "]" << std::endl;
 }
 
 /* ========== テスト 2 : Fork-merge ========= */
@@ -72,7 +72,9 @@ TEST(TopoSort, ForkMerge) {
     auto r = scheduler::topological_sort(R);
     ASSERT_TRUE(r.cycle_path.empty());
     EXPECT_EQ(r.ranks.size(), 4u);
-    EXPECT_TRUE(ranks_uniquely_topo(r.ranks, A));
+    EXPECT_TRUE(ranks_uniquely_topo(r.ranks, R));
+    EXPECT_EQ(r.ranks.at(R->plugin_instance_handler).rank, 3);
+    EXPECT_EQ(r.ranks.at(A->plugin_instance_handler).rank, 0);
 }
 
 /* ========== テスト 3 : SubEdge+MainTree ========= */
@@ -83,7 +85,6 @@ TEST(TopoSort, MixedEdges) {
     Y->inputs.resize(1, std::monostate{});
     ast::substitute(R, 0, X);
     ast::substitute(Y, 0, ast::SubEdge{X, 0});
-    ast::substitute(R, 0, X);
     ast::substitute(R, 1, Y);
 
     auto r = scheduler::topological_sort(R);
@@ -179,8 +180,10 @@ TEST(TopoSort, RankOrderRespectsEdges) {
     auto A = mk(1);
     auto B = mk(2);
     auto C = mk(3);
-    A->inputs.resize(1, B);  // A ← B
-    B->inputs.resize(1, C);  // B ← C
+    A->inputs.resize(1, std::monostate{});
+    B->inputs.resize(1, std::monostate{});
+    assign(A, 0, B);  // A ← B
+    assign(B, 0, C);  // B ← C
 
     auto r = scheduler::topological_sort(A);
     ASSERT_TRUE(r.cycle_path.empty());
@@ -280,16 +283,14 @@ TEST(TopoSort_Last, ForkMerge) {
 /* 3. SubEdge external consumer */
 TEST(TopoSort_Last, ExternalSubEdgeConsumer) {
     auto A = mk(520), B = mk(521), C = mk(522);
-    B->inputs.resize(1, std::monostate{});
+    B->inputs.resize(2, std::monostate{});
     C->inputs.resize(1, std::monostate{});
-    ast::substitute(B, 0, A);                   // main-child
-    ast::substitute(C, 0, ast::SubEdge{A, 0});  // external consumer
+    ast::substitute(B, 0, C);  // B <- C <- A
+    ast::substitute(B, 1, ast::SubEdge{A, 0});
+    ast::substitute(C, 0, A);
 
     auto r = scheduler::topological_sort(B);
     ASSERT_TRUE(r.cycle_path.empty());
 
-    auto rankB = r.ranks[B->plugin_instance_handler].rank;
-    auto rankC = r.ranks[C->plugin_instance_handler].rank;
-
-    EXPECT_EQ(r.ranks[A->plugin_instance_handler].last_consumer_rank, std::max(rankB, rankC));
+    EXPECT_EQ(r.ranks[A->plugin_instance_handler].last_consumer_rank, r.ranks.at(B->plugin_instance_handler).rank);
 }

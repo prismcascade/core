@@ -189,6 +189,8 @@ const ParameterPack& ParameterPackMemory::get_paramter_struct() {
     return parameter_pack_instance_;
 }
 
+}  // namespace memory
+
 /* ────────────────────────────────────────────── */
 /*  to_string helpers                             */
 /* ────────────────────────────────────────────── */
@@ -223,6 +225,4 @@ std::string to_string(PluginType variable_type) {
             return "(unknown type)";
     }
 }
-
-}  // namespace memory
 }  // namespace prismcascade

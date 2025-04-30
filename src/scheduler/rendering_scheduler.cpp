@@ -1,7 +1,7 @@
 #include <prismcascade/scheduler/rendering_scheduler.hpp>
 
-using namespace prismcascade;
-namespace sched = prismcascade::scheduler;
+// using namespace prismcascade;
+// namespace sched = prismcascade::scheduler;
 
 // std::tuple<std::vector<std::shared_ptr<ast::AstNode>>, std::vector<std::shared_ptr<ast::AstNode>>,
 // sched::LifetimeTable> sched::topological_sort(const std::shared_ptr<ast::AstNode>& root) {

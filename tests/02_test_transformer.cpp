@@ -174,8 +174,7 @@ TEST(TransformCut, CrossEdgeSubtreeDetach) {
     Z->inputs.resize(1, std::monostate{});
     ast::assign(Z, 0, ast::SubEdge{A, 0});
 
-    auto steps = ast::detach_cross_edges(A);
-    for (const auto& st : steps) ast::assign(st.node, st.index, st.new_value);
+    ast::detach_cross_edges(A);
 
     EXPECT_FALSE(hasBackRef(A, 0, Z, 0));
     EXPECT_FALSE(hasBackRef(A, 0, Y, 0));
@@ -209,7 +208,6 @@ TEST(DetachNoTouch, InnerToInnerKept) {
 
     /* detach A-subtree */
     auto steps = ast::detach_cross_edges(A);
-    for (auto& s : steps) ast::assign(s.node, s.index, s.new_value);
 
     /* 内→内 の back-ref は保持されるはず */
     EXPECT_TRUE(hasBackRef(A, 0, C, 0));
@@ -229,9 +227,8 @@ TEST(DetachNoTouch, OuterToOuterKept) {
     Y->inputs.resize(1, std::monostate{});
     ast::assign(Y, 0, ast::SubEdge{X, 0});  // X → Y
 
-    auto Z     = makeNode(313);  // unrelated subtree
-    auto steps = ast::detach_cross_edges(Z);
-    for (auto& s : steps) ast::assign(s.node, s.index, s.new_value);
+    auto Z = makeNode(313);  // unrelated subtree
+    ast::detach_cross_edges(Z);
 
     EXPECT_TRUE(hasBackRef(X, 0, Y, 0));
     EXPECT_TRUE(inputIsSubEdge(Y, 0, ast::SubEdge{X, 0}));
@@ -264,7 +261,6 @@ TEST(DetachUndo, FullRoundTrip) {
 
     /* detach A-subtree */
     auto steps = ast::detach_cross_edges(A);
-    for (auto& st : steps) ast::assign(st.node, st.index, st.new_value);
 
     EXPECT_FALSE(hasBackRef(A, 0, X, 0));
     EXPECT_FALSE(inputIsSubEdge(X, 0, ast::SubEdge{A, 0}));
@@ -306,6 +302,7 @@ TEST(AssignError, MainTreeCycle) {
     auto P = makeNode(401);
     auto C = makeNode(402);
     P->inputs.resize(1, std::monostate{});
+    C->inputs.resize(1, std::monostate{});
     ast::assign(P, 0, C);                                   // P → C
     EXPECT_THROW(ast::assign(C, 0, P), std::domain_error);  // would create cycle
 }

@@ -13,7 +13,7 @@ using scalar_val = std::variant<std::monostate, std::int64_t, bool, double, std:
 struct scalar_key {
     std::int64_t node;
     timestamp_t  stamp;
-    bool         operator==(const scalar_key&) const = default;
+    bool         operator==(const scalar_key& o) const noexcept { return node == o.node && stamp == o.stamp; }
 };
 struct scalar_h {
     std::size_t operator()(const scalar_key& k) const noexcept { return k.node ^ std::size_t(k.stamp); }
