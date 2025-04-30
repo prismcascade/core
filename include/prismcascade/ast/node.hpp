@@ -17,6 +17,11 @@ struct AstNode {
         std::uint64_t          dst_slot;   // dst_node の入力スロット
     };
 
+    struct InputWindow {
+        std::int64_t look_behind = 0;
+        std::int64_t look_ahead  = 0;
+    };
+
     // 入力
     // TODO: 将来的にはVectorParam に即値を入れられるようにする？
     using input_t = std::variant<std::monostate,
@@ -42,6 +47,8 @@ struct AstNode {
 
     // 入力
     std::vector<input_t> inputs;
+    // lookBehind, lookAhead
+    std::vector<std::optional<InputWindow>> input_window;
 
     // DLL側のメモリ
     std::shared_ptr<memory::ParameterPackMemory> input_parameters;
@@ -50,6 +57,10 @@ struct AstNode {
     // Clip として振る舞う場合
     std::optional<VideoMetaData> video_meta;
     std::optional<AudioMetaData> audio_meta;
+
+    // 直接操作してもよいが，便利メソッドとして定義
+    void resize_inputs(const std::vector<std::vector<VariableType>>& types);
+    void resize_outputs(const std::vector<std::vector<VariableType>>& types);
 };
 
 }  // namespace prismcascade::ast

@@ -13,7 +13,8 @@ class ParameterMemory {
    public:
     const VariableType       type_{};
     virtual const Parameter& get_paramter_struct();
-    virtual ~ParameterMemory() = default;  // デストラクタを vtable に乗せる
+    virtual ~ParameterMemory()             = default;  // デストラクタを vtable に乗せる
+    virtual std::size_t get_memory_usage() = 0;        // 単位: バイト
 
    protected:
     ParameterMemory(VariableType type);  // 基底クラスの直接生成は禁止
@@ -31,6 +32,7 @@ class IntParamMemory : public ParameterMemory {
    public:
     IntParamMemory();
     std::int64_t& buffer();
+    std::size_t   get_memory_usage() override;
 
    protected:
     void         refresh_parameter_struct() override;
@@ -40,7 +42,8 @@ class IntParamMemory : public ParameterMemory {
 class BoolParamMemory : public ParameterMemory {
    public:
     BoolParamMemory();
-    bool& buffer();
+    bool&       buffer();
+    std::size_t get_memory_usage() override;
 
    protected:
     void refresh_parameter_struct() override;
@@ -50,7 +53,8 @@ class BoolParamMemory : public ParameterMemory {
 class FloatParamMemory : public ParameterMemory {
    public:
     FloatParamMemory();
-    double& buffer();
+    double&     buffer();
+    std::size_t get_memory_usage() override;
 
    protected:
     void   refresh_parameter_struct() override;
@@ -67,6 +71,7 @@ class VideoFrameMemory : public ParameterMemory {
     const VideoMetaData& metadata();
     std::size_t          size() const;
     std::uint8_t&        at(std::size_t index);
+    std::size_t          get_memory_usage() override;
 
    protected:
     std::uint64_t             current_frame_ = 0;
@@ -84,6 +89,7 @@ class AudioParamMemory : public ParameterMemory {
     const AudioMetaData& metadata();
     std::size_t          size() const;
     double&              at(std::size_t index);
+    std::size_t          get_memory_usage() override;
 
    protected:
     void                refresh_parameter_struct() override;
@@ -98,6 +104,7 @@ struct TextParamMemory : public ParameterMemory {
     void         assign_text(const char* text);
     static void  assign_text_static(void* handler, const char* text);
     std::string& buffer();  // 直接書き込み可
+    std::size_t  get_memory_usage() override;
 
    protected:
     void        refresh_parameter_struct() override;
@@ -114,6 +121,7 @@ struct VectorParamMemory : public ParameterMemory {
     const VariableType               inner_type_;
     std::size_t                      size() const;
     std::shared_ptr<ParameterMemory> at(std::size_t index);
+    std::size_t                      get_memory_usage() override;
 
    protected:
     void                                          refresh_parameter_struct() override;
@@ -130,6 +138,7 @@ class ParameterPackMemory {
     std::uint64_t                                 size();
     const std::vector<std::vector<VariableType>>& types();
     const std::vector<std::shared_ptr<ParameterMemory>> buffer();
+    std::size_t                                         get_memory_usage();
 
    private:
     std::uint64_t                                 size_ = 0;

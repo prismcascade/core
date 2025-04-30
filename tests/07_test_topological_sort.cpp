@@ -40,8 +40,8 @@ static bool hasEdge(const std::shared_ptr<ast::AstNode>& dst, const std::shared_
 /* ========== テスト 1 : Linear chain ========= */
 TEST(TopoSort, LinearChain) {
     auto A = mk(1), B = mk(2), C = mk(3);
-    A->inputs.resize(1, std::monostate{});
-    B->inputs.resize(1, std::monostate{});
+    A->resize_inputs({{VariableType::Int}});
+    B->resize_inputs({{VariableType::Int}});
     ast::substitute(A, 0, B);
     ast::substitute(B, 0, C);
 
@@ -61,9 +61,9 @@ TEST(TopoSort, LinearChain) {
 /* ========== テスト 2 : Fork-merge ========= */
 TEST(TopoSort, ForkMerge) {
     auto A = mk(10), B = mk(11), C = mk(12), R = mk(13);
-    B->inputs.resize(1, std::monostate{});
-    C->inputs.resize(1, std::monostate{});
-    R->inputs.resize(2, std::monostate{});
+    B->resize_inputs({{VariableType::Int}});
+    C->resize_inputs({{VariableType::Int}});
+    R->resize_inputs({{VariableType::Int}, {VariableType::Int}});
     ast::substitute(B, 0, ast::SubEdge{A, 0});  // B depends on A
     ast::substitute(C, 0, ast::SubEdge{A, 0});  // C depends on A
     ast::substitute(R, 0, B);                   // final output depends on both
@@ -80,9 +80,9 @@ TEST(TopoSort, ForkMerge) {
 /* ========== テスト 3 : SubEdge+MainTree ========= */
 TEST(TopoSort, MixedEdges) {
     auto R = mk(20), X = mk(21), Y = mk(22);
-    R->inputs.resize(2, std::monostate{});
-    X->inputs.resize(1, std::monostate{});
-    Y->inputs.resize(1, std::monostate{});
+    R->resize_inputs({{VariableType::Int}, {VariableType::Int}});
+    X->resize_inputs({{VariableType::Int}});
+    Y->resize_inputs({{VariableType::Int}});
     ast::substitute(R, 0, X);
     ast::substitute(Y, 0, ast::SubEdge{X, 0});
     ast::substitute(R, 1, Y);
@@ -96,7 +96,7 @@ TEST(TopoSort, MixedEdges) {
 /* ========== テスト 4 : Rank uniqueness alone ========= */
 TEST(TopoSort, RanksUnique) {
     auto A = mk(30), B = mk(31);
-    A->inputs.resize(1, std::monostate{});
+    A->resize_inputs({{VariableType::Int}});
     ast::substitute(A, 0, B);
     auto                         r = scheduler::topological_sort(A);
     std::unordered_set<uint32_t> uniq;
@@ -107,8 +107,8 @@ TEST(TopoSort, RanksUnique) {
 /* ========== テスト 5 : SubEdge Cycle detection ========= */
 TEST(TopoSortCycle, SubEdgeCycle) {
     auto A = mk(40), B = mk(41);
-    A->inputs.resize(1, std::monostate{});
-    B->inputs.resize(1, std::monostate{});
+    A->resize_inputs({{VariableType::Int}});
+    B->resize_inputs({{VariableType::Int}});
     ast::substitute(A, 0, ast::SubEdge{B, 0});
     ast::substitute(B, 0, ast::SubEdge{A, 0});  // cycle
 
@@ -121,9 +121,9 @@ TEST(TopoSortCycle, SubEdgeCycle) {
 /* ========== テスト 6 : cycle_path size >=2 ========= */
 TEST(TopoSortCycle, PathLength) {
     auto A = mk(50), B = mk(51), C = mk(52);
-    A->inputs.resize(1, std::monostate{});
-    B->inputs.resize(1, std::monostate{});
-    C->inputs.resize(1, std::monostate{});
+    A->resize_inputs({{VariableType::Int}});
+    B->resize_inputs({{VariableType::Int}});
+    C->resize_inputs({{VariableType::Int}});
     ast::substitute(A, 0, ast::SubEdge{C, 0});
     ast::substitute(B, 0, ast::SubEdge{A, 0});
     ast::substitute(C, 0, ast::SubEdge{B, 0});  // 3-cycle
@@ -140,14 +140,19 @@ RC_GTEST_PROP(TopoSortProp, RandomAcyclicDag, ()) {
     v.reserve(n);
     for (std::size_t i = 0; i < n; ++i) {
         v.push_back(mk(200 + i));
-        v[i]->inputs.resize(1, std::monostate{});
+        v[i]->resize_inputs({{VariableType::Int}});
     }
     // ランダムな acyclic SubEdge を追加
     for (std::size_t i = 0; i < n; ++i)
         for (std::size_t j = i + 1; j < n; ++j)
             if (*rc::gen::arbitrary<bool>() && (rand() % 4 == 0)) ast::substitute(v[i], 0, ast::SubEdge{v[j], 0});
     // rootから到達可能にする
-    v[0]->inputs.resize(n - 1, std::monostate{});  // root に (n-1) スロット確保
+    {
+        // root に (n-1) スロット確保
+        std::vector<std::vector<VariableType>> types;
+        for (int i = 0; i < n - 1; ++i) types.push_back({VariableType::Int});
+        v[0]->resize_inputs(types);
+    }
     for (std::size_t i = 1; i < n; ++i) ast::substitute(v[0], i - 1, ast::SubEdge{v[i], 0});  // 依存辺を張る
     // 実行
     auto r = scheduler::topological_sort(v[0]);
@@ -162,7 +167,8 @@ RC_GTEST_PROP(TopoSortProp, RandomCycleDetected, ()) {
     std::vector<std::shared_ptr<ast::AstNode>> v;
     for (std::size_t i = 0; i < n; ++i) {
         v.push_back(mk(300 + i));
-        v[i]->inputs.resize(1, std::monostate{});
+
+        v[i]->resize_inputs({{VariableType::Int}});
     }
     // chain
     for (std::size_t i = 0; i < n - 1; ++i) ast::substitute(v[i], 0, v[i + 1]);
@@ -180,10 +186,10 @@ TEST(TopoSort, RankOrderRespectsEdges) {
     auto A = mk(1);
     auto B = mk(2);
     auto C = mk(3);
-    A->inputs.resize(1, std::monostate{});
-    B->inputs.resize(1, std::monostate{});
-    assign(A, 0, B);  // A ← B
-    assign(B, 0, C);  // B ← C
+    A->resize_inputs({{VariableType::Int}});
+    B->resize_inputs({{VariableType::Int}});
+    ast::substitute(A, 0, B);  // A ← B
+    ast::substitute(B, 0, C);  // B ← C
 
     auto r = scheduler::topological_sort(A);
     ASSERT_TRUE(r.cycle_path.empty());
@@ -197,7 +203,8 @@ TEST(TopoSort, RankOrderRespectsEdges) {
 TEST(TopoSort, PrePostIntervalContainsChildren) {
     auto P = mk(10);
     auto C = mk(11);
-    P->inputs.resize(1, C);
+    P->resize_inputs({{VariableType::Int}});
+    ast::substitute(P, 0, C);
 
     auto        r  = scheduler::topological_sort(P);
     const auto& pi = r.ranks[P->plugin_instance_handler];
@@ -211,7 +218,9 @@ TEST(TopoSort, PrePostIntervalContainsChildren) {
 // ── 3. self-loop cycle detection ───────────────────────
 TEST(TopoSort, DetectSelfLoop) {
     auto N = mk(20);
-    N->inputs.resize(1, N);  // self loop
+
+    N->resize_inputs({{VariableType::Int}});
+    N->inputs.at(0) = N;  // self loop
 
     auto res = scheduler::topological_sort(N);
     ASSERT_TRUE(res.ranks.empty());
@@ -225,8 +234,10 @@ TEST(TopoSort, DetectSelfLoop) {
 TEST(TopoSort, CyclePathMatchesEdges) {
     auto X = mk(30);
     auto Y = mk(31);
-    X->inputs.resize(1, Y);
-    Y->inputs.resize(1, X);
+    X->resize_inputs({{VariableType::Int}});
+    Y->resize_inputs({{VariableType::Int}});
+    X->inputs.at(0) = Y;
+    Y->inputs.at(0) = X;
 
     auto res = scheduler::topological_sort(X);
     ASSERT_TRUE(res.ranks.empty());
@@ -242,8 +253,8 @@ TEST(TopoSort, CyclePathMatchesEdges) {
 /* 1. Linear chain  A←B←C  */
 TEST(TopoSort_Last, LinearChain) {
     auto A = mk(501), B = mk(502), C = mk(503);
-    A->inputs.resize(1, std::monostate{});
-    B->inputs.resize(1, std::monostate{});
+    A->resize_inputs({{VariableType::Int}});
+    B->resize_inputs({{VariableType::Int}});
     ast::substitute(A, 0, B);
     ast::substitute(B, 0, C);
 
@@ -262,8 +273,8 @@ TEST(TopoSort_Last, LinearChain) {
 /* 2. Fork  R consumes X,Y  &  M also consumes X,Y */
 TEST(TopoSort_Last, ForkMerge) {
     auto R = mk(510), X = mk(511), Y = mk(512), M = mk(513);
-    R->inputs.resize(2, std::monostate{});
-    M->inputs.resize(2, std::monostate{});
+    R->resize_inputs({{VariableType::Int}, {VariableType::Int}});
+    M->resize_inputs({{VariableType::Int}, {VariableType::Int}});
 
     ast::substitute(R, 0, X);
     ast::substitute(R, 1, Y);
@@ -283,8 +294,8 @@ TEST(TopoSort_Last, ForkMerge) {
 /* 3. SubEdge external consumer */
 TEST(TopoSort_Last, ExternalSubEdgeConsumer) {
     auto A = mk(520), B = mk(521), C = mk(522);
-    B->inputs.resize(2, std::monostate{});
-    C->inputs.resize(1, std::monostate{});
+    B->resize_inputs({{VariableType::Int}, {VariableType::Int}});
+    C->resize_inputs({{VariableType::Int}});
     ast::substitute(B, 0, C);  // B <- C <- A
     ast::substitute(B, 1, ast::SubEdge{A, 0});
     ast::substitute(C, 0, A);

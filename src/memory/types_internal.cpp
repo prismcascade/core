@@ -47,6 +47,8 @@ void          IntParamMemory::refresh_parameter_struct() {
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
+std::size_t IntParamMemory::get_memory_usage() { return sizeof(IntParamMemory); };
+
 BoolParamMemory::BoolParamMemory() : ParameterMemory(VariableType::Bool) {}
 bool& BoolParamMemory::buffer() { return parameter_instance_; }
 void  BoolParamMemory::refresh_parameter_struct() {
@@ -54,12 +56,16 @@ void  BoolParamMemory::refresh_parameter_struct() {
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
+std::size_t BoolParamMemory::get_memory_usage() { return sizeof(BoolParamMemory); };
+
 FloatParamMemory::FloatParamMemory() : ParameterMemory(VariableType::Float) {}
 double& FloatParamMemory::buffer() { return parameter_instance_; }
 void    FloatParamMemory::refresh_parameter_struct() {
     parameter_.type  = VariableType::Float;
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
+
+std::size_t FloatParamMemory::get_memory_usage() { return sizeof(FloatParamMemory); };
 
 /* ────────────────────────────────────────────── */
 /*  VideoFrameMemory                              */
@@ -88,6 +94,10 @@ void                 VideoFrameMemory::refresh_parameter_struct() {
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
+std::size_t VideoFrameMemory::get_memory_usage() {
+    return sizeof(VideoFrameMemory) + buffer_.size() * sizeof(buffer_.at(0));
+};
+
 /* ────────────────────────────────────────────── */
 /*  AudioParamMemory                              */
 /* ────────────────────────────────────────────── */
@@ -114,6 +124,10 @@ void                 AudioParamMemory::refresh_parameter_struct() {
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
+std::size_t AudioParamMemory::get_memory_usage() {
+    return sizeof(AudioParamMemory) + buffer_.size() * sizeof(buffer_.at(0));
+};
+
 /* ────────────────────────────────────────────── */
 /*  TextParamMemory                               */
 /* ────────────────────────────────────────────── */
@@ -135,6 +149,10 @@ void         TextParamMemory::refresh_parameter_struct() {
     parameter_.type  = VariableType::Text;
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
+
+std::size_t TextParamMemory::get_memory_usage() {
+    return sizeof(TextParamMemory) + buffer_.size() * sizeof(buffer_.at(0));
+};
 
 /* ────────────────────────────────────────────── */
 /*  VectorParamMemory                             */
@@ -166,6 +184,13 @@ void VectorParamMemory::refresh_parameter_struct() {
     parameter_.value = reinterpret_cast<void*>(&parameter_instance_);
 }
 
+std::size_t VectorParamMemory::get_memory_usage() {
+    std::size_t result_size = sizeof(VectorParamMemory);
+    for (const auto& memory : memory_buffer_) result_size += memory->get_memory_usage();
+    result_size += vector_buffer_.size() * sizeof(Parameter);
+    return result_size;
+};
+
 /* ────────────────────────────────────────────── */
 /*  ParameterPackMemory                           */
 /* ────────────────────────────────────────────── */
@@ -188,6 +213,15 @@ const ParameterPack& ParameterPackMemory::get_paramter_struct() {
     parameter_pack_instance_.parameters = buffer_.data();
     return parameter_pack_instance_;
 }
+
+std::size_t ParameterPackMemory::get_memory_usage() {
+    std::size_t result_size = sizeof(ParameterPackMemory);
+    for (const auto& memory : memory_buffer_) result_size += memory->get_memory_usage();
+    result_size += types_.size() * sizeof(types_.at(0));
+    for (const auto& type : types_) result_size += type.size() * sizeof(type.at(0));
+    result_size += buffer_.size() * sizeof(Parameter);
+    return result_size;
+};
 
 }  // namespace memory
 

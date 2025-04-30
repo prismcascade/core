@@ -9,10 +9,11 @@
 namespace prismcascade::scheduler {
 
 struct RankInfo {
-    std::int64_t rank               = 0;  // 葉 0  → 根へ昇順
-    std::int64_t last_consumer_rank = 0;  // 変数寿命 (Δtimeと両方の検査が必要)
-    timestamp_t  pre_ts             = 0;  // DFS pre  順
-    timestamp_t  post_ts            = 0;  // DFS post 順
+    std::int64_t                rank               = 0;  // 葉 0  → 根へ昇順
+    std::int64_t                last_consumer_rank = 0;  // 変数寿命 (Δtimeと両方の検査が必要)
+    timestamp_t                 pre_ts             = 0;  // DFS pre  順
+    timestamp_t                 post_ts            = 0;  // DFS post 順
+    std::optional<std::int64_t> delay              = 0;
 };
 
 struct TopoResult {

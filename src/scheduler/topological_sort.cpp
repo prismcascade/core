@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <limits>
 #include <prismcascade/scheduler/topological_sort.hpp>
 #include <unordered_map>
 #include <vector>
@@ -8,19 +9,20 @@ namespace {
 
 // ─── DFS colour marks ──────────────────────────────────────────
 enum class Mark : std::uint8_t { initial, visiting, done };
-using NodePtr = std::shared_ptr<ast::AstNode>;
 
 // ------------- 再帰 DFS ----------------------------------------
-bool dfs(const NodePtr& v, std::unordered_map<std::int64_t, Mark>& mark,
-         std::unordered_map<std::int64_t, RankInfo>& info, std::vector<NodePtr>& callstack, std::vector<NodePtr>& topo,
-         std::vector<NodePtr>& cycle, timestamp_t& counter) {
+bool dfs(const std::shared_ptr<ast::AstNode>& v, std::unordered_map<std::int64_t, Mark>& mark,
+         std::unordered_map<std::int64_t, RankInfo>& info, std::vector<std::shared_ptr<ast::AstNode>>& callstack,
+         std::vector<std::shared_ptr<ast::AstNode>>& topo, std::vector<std::shared_ptr<ast::AstNode>>& cycle,
+         timestamp_t& counter) {
     if (!v) return true;
     const auto id = v->plugin_instance_handler;
 
     switch (mark[id]) {
         case Mark::visiting: {  // back-edge → cycle
-            auto it = std::find_if(callstack.begin(), callstack.end(),
-                                   [&](const NodePtr& p) { return p->plugin_instance_handler == id; });
+            auto it = std::find_if(callstack.begin(), callstack.end(), [&](const std::shared_ptr<ast::AstNode>& p) {
+                return p->plugin_instance_handler == id;
+            });
             cycle.assign(it, callstack.end());
             cycle.push_back(v);
             return false;
@@ -36,10 +38,12 @@ bool dfs(const NodePtr& v, std::unordered_map<std::int64_t, Mark>& mark,
     RankInfo& ri = info[id];
     ri.pre_ts    = ++counter;  // pre-order
 
-    auto recur = [&](const NodePtr& n) { return dfs(n, mark, info, callstack, topo, cycle, counter); };
+    auto recur = [&](const std::shared_ptr<ast::AstNode>& n) {
+        return dfs(n, mark, info, callstack, topo, cycle, counter);
+    };
 
     for (const auto& in : v->inputs) {
-        if (auto p = std::get_if<NodePtr>(&in)) {
+        if (auto p = std::get_if<std::shared_ptr<ast::AstNode>>(&in)) {
             if (*p && !recur(*p)) return false;
         } else if (auto se = std::get_if<ast::SubEdge>(&in)) {
             if (auto src = se->source.lock())
@@ -63,7 +67,7 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
 
     std::unordered_map<std::int64_t, Mark>     mark;
     std::unordered_map<std::int64_t, RankInfo> info;
-    std::vector<NodePtr>                       callstack, topo;
+    std::vector<std::shared_ptr<ast::AstNode>> callstack, topo;
     timestamp_t                                counter = 0;
 
     // 普通にDFS
@@ -81,16 +85,127 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     // last_consumer_rank を伝搬 (root 側から辿る)
     for (const auto& node : topo) {
         auto consumer_rank = info[node->plugin_instance_handler].rank;  // 現在ノード
-        auto update        = [&](const NodePtr& prod) {
+        auto update        = [&](const std::shared_ptr<ast::AstNode>& prod) {
             if (!prod) return;
             auto& pi              = info[prod->plugin_instance_handler];
             pi.last_consumer_rank = std::max(pi.last_consumer_rank, consumer_rank);
         };
         for (const auto& input : node->inputs) {
-            if (auto child = std::get_if<NodePtr>(&input); child && *child)
+            if (auto child = std::get_if<std::shared_ptr<ast::AstNode>>(&input); child && *child)
                 update(*child);
             else if (auto sub_edge = std::get_if<ast::SubEdge>(&input))
                 if (auto sub_edge_source = sub_edge->source.lock()) update(sub_edge_source);
+        }
+    }
+
+    // delayを伝搬
+    // for (const auto& node : topo) {
+    //     auto& current_info     = info.at(node->plugin_instance_handler);
+    //     auto  assign_max_delay = [&current_info](std::optional<std::int64_t> source_delay, std::int64_t maybe_diff) {
+    //         if (current_info.delay)
+    //             current_info.delay = std::max(*current_info.delay, maybe_diff);
+    //         else
+    //             current_info.delay = maybe_diff;
+    //     };
+    //     for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
+    //         const auto& input_value  = node->inputs.at(input_index);
+    //         const auto& maybe_window = node->input_window.at(input_index);
+    //         if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
+    //             if (maybe_window) {
+    //                 assign_max_delay(info.at((*source)->plugin_instance_handler).delay, maybe_window->look_ahead);
+    //             }
+    //         } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
+    //             if (auto source = sub_edge->source.lock()) {
+    //                 if (maybe_window) {
+    //                     assign_max_delay(info.at(source->plugin_instance_handler).delay, maybe_window->look_ahead);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     // TODO: delayが任意の場合に不整合が生じるので，そもそもrootから決めていくべき？
+    //     if (!current_info.delay.has_value()) current_info.delay = 0;
+    // }
+    {
+        // calculate lower bound
+        std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_lower_bound;
+        for (const auto& node : topo) {
+            auto& current_delay_lower_bound = delay_lower_bound[node->plugin_instance_handler];
+            auto  assign_max_delay          = [&current_delay_lower_bound](std::optional<std::int64_t> source_delay,
+                                                                 std::int64_t                maybe_diff) {
+                if (source_delay) {
+                    if (current_delay_lower_bound)
+                        current_delay_lower_bound = std::max(*current_delay_lower_bound, *source_delay + maybe_diff);
+                    else
+                        current_delay_lower_bound = *source_delay + maybe_diff;
+                }
+            };
+            for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
+                const auto& input_value  = node->inputs.at(input_index);
+                const auto& maybe_window = node->input_window.at(input_index);
+                if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
+                    if (maybe_window) {
+                        assign_max_delay(delay_lower_bound.at((*source)->plugin_instance_handler),
+                                         maybe_window->look_ahead);
+                    }
+                } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
+                    if (auto source = sub_edge->source.lock()) {
+                        if (maybe_window) {
+                            assign_max_delay(delay_lower_bound.at(source->plugin_instance_handler),
+                                             maybe_window->look_ahead);
+                        }
+                    }
+                }
+            }
+            if (!current_delay_lower_bound.has_value()) current_delay_lower_bound = 0;
+        }
+
+        // calculate upper bound
+        std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_upper_bound;
+        delay_upper_bound[topo.back()->plugin_instance_handler] =
+            *delay_lower_bound.at(topo.back()->plugin_instance_handler);  // root固定
+        for (auto node_iterator = topo.crbegin(); node_iterator != topo.crend(); ++node_iterator) {
+            const auto& node             = *node_iterator;
+            auto        assign_min_delay = [&delay_upper_bound](std::optional<std::int64_t> source_delay,
+                                                         std::int64_t                maybe_diff,
+                                                         std::int64_t                child_plugin_instance_handler) {
+                if (source_delay) {
+                    auto& child_delay_upper_bound = delay_upper_bound[child_plugin_instance_handler];
+                    if (child_delay_upper_bound)
+                        child_delay_upper_bound = std::min(*child_delay_upper_bound, *source_delay - maybe_diff);
+                    else
+                        child_delay_upper_bound = *source_delay - maybe_diff;
+                }
+            };
+            for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
+                const auto& input_value  = node->inputs.at(input_index);
+                const auto& maybe_window = node->input_window.at(input_index);
+                if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
+                    if (maybe_window) {
+                        assign_min_delay(delay_upper_bound.at(node->plugin_instance_handler), maybe_window->look_ahead,
+                                         (*source)->plugin_instance_handler);
+                    }
+                } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
+                    if (auto source = sub_edge->source.lock()) {
+                        if (maybe_window) {
+                            assign_min_delay(delay_upper_bound.at(node->plugin_instance_handler),
+                                             maybe_window->look_ahead, source->plugin_instance_handler);
+                        }
+                    }
+                }
+            }
+        }
+
+        // calculate delay offset
+        std::int64_t delay_offset = std::numeric_limits<std::int64_t>::max();
+        for (const auto& node : topo) {
+            const auto& maybe_upper_bound = delay_upper_bound[node->plugin_instance_handler];
+            if (maybe_upper_bound) delay_offset = std::min(delay_offset, *maybe_upper_bound);
+        }
+
+        // store (min{D} = 0)
+        for (const auto& node : topo) {
+            const auto& maybe_upper_bound = delay_upper_bound[node->plugin_instance_handler];
+            if (maybe_upper_bound) info.at(node->plugin_instance_handler).delay = *maybe_upper_bound - delay_offset;
         }
     }
 
