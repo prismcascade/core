@@ -127,42 +127,41 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     // }
     {
         // calculate lower bound
-        std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_lower_bound;
-        for (const auto& node : topo) {
-            auto& current_delay_lower_bound = delay_lower_bound[node->plugin_instance_handler];
-            auto  assign_max_delay          = [&current_delay_lower_bound](std::optional<std::int64_t> source_delay,
-                                                                 std::int64_t                maybe_diff) {
-                if (source_delay) {
-                    if (current_delay_lower_bound)
-                        current_delay_lower_bound = std::max(*current_delay_lower_bound, *source_delay + maybe_diff);
-                    else
-                        current_delay_lower_bound = *source_delay + maybe_diff;
-                }
-            };
-            for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
-                const auto& input_value  = node->inputs.at(input_index);
-                const auto& maybe_window = node->input_window.at(input_index);
-                if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
-                    if (maybe_window) {
-                        assign_max_delay(delay_lower_bound.at((*source)->plugin_instance_handler),
-                                         maybe_window->look_ahead);
-                    }
-                } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
-                    if (auto source = sub_edge->source.lock()) {
-                        if (maybe_window) {
-                            assign_max_delay(delay_lower_bound.at(source->plugin_instance_handler),
-                                             maybe_window->look_ahead);
-                        }
-                    }
-                }
-            }
-            if (!current_delay_lower_bound.has_value()) current_delay_lower_bound = 0;
-        }
+        // std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_lower_bound;
+        // for (const auto& node : topo) {
+        //     auto& current_delay_lower_bound = delay_lower_bound[node->plugin_instance_handler];
+        //     auto  assign_max_delay          = [&current_delay_lower_bound](std::optional<std::int64_t> source_delay,
+        //                                                          std::int64_t                maybe_diff) {
+        //         if (source_delay) {
+        //             if (current_delay_lower_bound)
+        //                 current_delay_lower_bound = std::max(*current_delay_lower_bound, *source_delay + maybe_diff);
+        //             else
+        //                 current_delay_lower_bound = *source_delay + maybe_diff;
+        //         }
+        //     };
+        //     for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
+        //         const auto& input_value  = node->inputs.at(input_index);
+        //         const auto& maybe_window = node->input_window.at(input_index);
+        //         if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
+        //             if (maybe_window) {
+        //                 assign_max_delay(delay_lower_bound.at((*source)->plugin_instance_handler),
+        //                                  maybe_window->look_ahead);
+        //             }
+        //         } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
+        //             if (auto source = sub_edge->source.lock()) {
+        //                 if (maybe_window) {
+        //                     assign_max_delay(delay_lower_bound.at(source->plugin_instance_handler),
+        //                                      maybe_window->look_ahead);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     if (!current_delay_lower_bound.has_value()) current_delay_lower_bound = 0;
+        // }
 
         // calculate upper bound
         std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_upper_bound;
-        delay_upper_bound[topo.back()->plugin_instance_handler] =
-            *delay_lower_bound.at(topo.back()->plugin_instance_handler);  // root固定
+        delay_upper_bound[topo.back()->plugin_instance_handler] = 0;  // root固定
         for (auto node_iterator = topo.crbegin(); node_iterator != topo.crend(); ++node_iterator) {
             const auto& node             = *node_iterator;
             auto        assign_min_delay = [&delay_upper_bound](std::optional<std::int64_t> source_delay,
