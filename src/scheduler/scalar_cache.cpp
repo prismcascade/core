@@ -5,7 +5,7 @@ scalar_val scalar_cache::fetch(const scalar_key& k) const {
     auto it = map_.find(k);
     return (it == map_.end()) ? scalar_val{} : it->second;
 }
-void scalar_cache::clear_before(timestamp_t t) {
+void scalar_cache::clear_before(memory::timestamp_t t) {
     for (auto it = map_.begin(); it != map_.end();)
         if (it->first.stamp < t)
             it = map_.erase(it);

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <limits>
+#include <prismcascade/memory/time.hpp>
 #include <prismcascade/scheduler/topological_sort.hpp>
 #include <unordered_map>
 #include <vector>
@@ -14,7 +15,7 @@ enum class Mark : std::uint8_t { initial, visiting, done };
 bool dfs(const std::shared_ptr<ast::AstNode>& v, std::unordered_map<std::int64_t, Mark>& mark,
          std::unordered_map<std::int64_t, RankInfo>& info, std::vector<std::shared_ptr<ast::AstNode>>& callstack,
          std::vector<std::shared_ptr<ast::AstNode>>& topo, std::vector<std::shared_ptr<ast::AstNode>>& cycle,
-         timestamp_t& counter) {
+         memory::timestamp_t& counter) {
     if (!v) return true;
     const auto id = v->plugin_instance_handler;
 
@@ -68,11 +69,21 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     std::unordered_map<std::int64_t, Mark>     mark;
     std::unordered_map<std::int64_t, RankInfo> info;
     std::vector<std::shared_ptr<ast::AstNode>> callstack, topo;
-    timestamp_t                                counter = 0;
+    memory::timestamp_t                        counter = 0;
 
     // 普通にDFS
     const bool success = dfs(root, mark, info, callstack, topo, res.cycle_path, counter);
     if (!success) return res;  // ranks 空・cycle_path に閉路
+
+    // fps_lcm の計算
+    {
+        // res.fps_lcm = 1;
+        // auto lcm = [](memory::timestamp_t a, memory::timestamp_t b) { return a / boost::multiprecision::gcd(a, b) *
+        // b; }; for (auto& n : topo)
+        //     for (auto& winOpt : n->input_window)
+        //         if (winOpt && winOpt->fps.num)  // fps == 0 は除外
+        //             res.fps_lcm = lcm(res.fps_lcm, winOpt->fps.num);
+    }
 
     // Rank を振る
     std::int64_t rank = 0;
@@ -99,66 +110,7 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     }
 
     // delayを伝搬
-    // for (const auto& node : topo) {
-    //     auto& current_info     = info.at(node->plugin_instance_handler);
-    //     auto  assign_max_delay = [&current_info](std::optional<std::int64_t> source_delay, std::int64_t maybe_diff) {
-    //         if (current_info.delay)
-    //             current_info.delay = std::max(*current_info.delay, maybe_diff);
-    //         else
-    //             current_info.delay = maybe_diff;
-    //     };
-    //     for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
-    //         const auto& input_value  = node->inputs.at(input_index);
-    //         const auto& maybe_window = node->input_window.at(input_index);
-    //         if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
-    //             if (maybe_window) {
-    //                 assign_max_delay(info.at((*source)->plugin_instance_handler).delay, maybe_window->look_ahead);
-    //             }
-    //         } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
-    //             if (auto source = sub_edge->source.lock()) {
-    //                 if (maybe_window) {
-    //                     assign_max_delay(info.at(source->plugin_instance_handler).delay, maybe_window->look_ahead);
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     // TODO: delayが任意の場合に不整合が生じるので，そもそもrootから決めていくべき？
-    //     if (!current_info.delay.has_value()) current_info.delay = 0;
-    // }
     {
-        // calculate lower bound
-        // std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_lower_bound;
-        // for (const auto& node : topo) {
-        //     auto& current_delay_lower_bound = delay_lower_bound[node->plugin_instance_handler];
-        //     auto  assign_max_delay          = [&current_delay_lower_bound](std::optional<std::int64_t> source_delay,
-        //                                                          std::int64_t                maybe_diff) {
-        //         if (source_delay) {
-        //             if (current_delay_lower_bound)
-        //                 current_delay_lower_bound = std::max(*current_delay_lower_bound, *source_delay + maybe_diff);
-        //             else
-        //                 current_delay_lower_bound = *source_delay + maybe_diff;
-        //         }
-        //     };
-        //     for (std::size_t input_index = 0; input_index < node->inputs.size(); ++input_index) {
-        //         const auto& input_value  = node->inputs.at(input_index);
-        //         const auto& maybe_window = node->input_window.at(input_index);
-        //         if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
-        //             if (maybe_window) {
-        //                 assign_max_delay(delay_lower_bound.at((*source)->plugin_instance_handler),
-        //                                  maybe_window->look_ahead);
-        //             }
-        //         } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
-        //             if (auto source = sub_edge->source.lock()) {
-        //                 if (maybe_window) {
-        //                     assign_max_delay(delay_lower_bound.at(source->plugin_instance_handler),
-        //                                      maybe_window->look_ahead);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     if (!current_delay_lower_bound.has_value()) current_delay_lower_bound = 0;
-        // }
-
         // calculate upper bound
         std::unordered_map<std::int64_t, std::optional<std::int64_t>> delay_upper_bound;
         delay_upper_bound[topo.back()->plugin_instance_handler] = 0;  // root固定
@@ -180,14 +132,14 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
                 const auto& maybe_window = node->input_window.at(input_index);
                 if (auto source = std::get_if<std::shared_ptr<ast::AstNode>>(&input_value); source && *source) {
                     if (maybe_window) {
-                        assign_min_delay(delay_upper_bound.at(node->plugin_instance_handler), maybe_window->look_ahead,
+                        assign_min_delay(delay_upper_bound[node->plugin_instance_handler], maybe_window->look_ahead,
                                          (*source)->plugin_instance_handler);
                     }
                 } else if (auto sub_edge = std::get_if<ast::SubEdge>(&input_value)) {
                     if (auto source = sub_edge->source.lock()) {
                         if (maybe_window) {
-                            assign_min_delay(delay_upper_bound.at(node->plugin_instance_handler),
-                                             maybe_window->look_ahead, source->plugin_instance_handler);
+                            assign_min_delay(delay_upper_bound[node->plugin_instance_handler], maybe_window->look_ahead,
+                                             source->plugin_instance_handler);
                         }
                     }
                 }

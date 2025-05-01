@@ -11,16 +11,16 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <prismcascade/memory/time.hpp>
 #include <prismcascade/memory/types_internal.hpp>
-#include <prismcascade/scheduler/time.hpp>
 #include <string>
 #include <unordered_map>
 
 namespace prismcascade::scheduler {
 struct video_cache_key {
-    std::int64_t  node_id;
-    timestamp_t   stamp;
-    std::uint32_t port;
+    std::int64_t        node_id;
+    memory::timestamp_t stamp;
+    std::uint32_t       port;
 
     bool operator==(const video_cache_key& o) const noexcept {
         return node_id == o.node_id && stamp == o.stamp && port == o.port;

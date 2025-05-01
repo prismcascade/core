@@ -3,7 +3,7 @@
 namespace prismcascade::scheduler {
 audio_ring::audio_ring(std::size_t c) : buf_(c), cap_(c) {}
 
-std::size_t audio_ring::write(const double* src, std::size_t n, timestamp_t ts) {
+std::size_t audio_ring::write(const double* src, std::size_t n, memory::timestamp_t ts) {
     n = std::min(n, cap_ - len_);
     for (std::size_t i = 0; i < n; ++i) buf_[(tail_ + i) % cap_] = src[i];
     tail_ = (tail_ + n) % cap_;

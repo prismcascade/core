@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace prismcascade::scheduler {
+namespace prismcascade::memory {
 
 /* 128-bit 符号無し整数を “時間座標” として使う。
    Boost の checked_int128_t は

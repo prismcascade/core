@@ -3,7 +3,7 @@
 #include <functional>
 #include <memory>
 #include <prismcascade/ast/node.hpp>
-#include <prismcascade/scheduler/time.hpp>
+#include <prismcascade/memory/time.hpp>
 #include <queue>
 #include <vector>
 
@@ -12,7 +12,7 @@ namespace prismcascade::scheduler {
 class ExecutionQueue {
    public:
     struct Item {
-        timestamp_t                   stamp;  // pop 優先キー
+        memory::timestamp_t           stamp;  // pop 優先キー
         std::int64_t                  rank;   // tie-break
         std::shared_ptr<ast::AstNode> node;   // 実行ターゲット
     };

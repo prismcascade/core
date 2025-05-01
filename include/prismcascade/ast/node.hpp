@@ -3,6 +3,7 @@
 #include <optional>
 #include <prismcascade/ast/edge.hpp>
 #include <prismcascade/common/types.hpp>
+#include <prismcascade/memory/time.hpp>
 #include <prismcascade/memory/types_internal.hpp>
 #include <string>
 #include <variant>
@@ -18,8 +19,9 @@ struct AstNode {
     };
 
     struct InputWindow {
-        std::int64_t look_behind = 0;
-        std::int64_t look_ahead  = 0;
+        std::int64_t           look_behind = 0;
+        std::int64_t           look_ahead  = 0;
+        memory::rational_fps_t fps{};
     };
 
     // 入力
