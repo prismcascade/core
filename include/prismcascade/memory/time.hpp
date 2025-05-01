@@ -48,4 +48,4 @@ inline frame_step_t to_step(rational_fps_t fps, std::uint64_t lcm_den) noexcept 
 /* ─────────────────────────────────────────────── */
 static_assert(std::numeric_limits<timestamp_t>::digits >= 127, "timestamp_t width must be ≥ 128 bits");
 
-}  // namespace prismcascade::scheduler
+}  // namespace prismcascade::memory
