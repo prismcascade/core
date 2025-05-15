@@ -21,5 +21,4 @@ EXPORT bool API_CALL hello_world(int t) {
     std::cout << "Hello world: [" << t << "]" << std::endl;
     return true;
 }
-
 }
