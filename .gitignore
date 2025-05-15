@@ -30,3 +30,55 @@
 *.exe
 *.out
 *.app
+
+# --- Build artifacts --------------------------
+/build/
+/out/
+/dist/
+/install/
+/CMakeFiles/
+/cmake-build-*/
+
+
+# Ninja & Make
+/build.ninja
+/compile_commands.json
+
+# Visual Studio (CMakePresets)
+/*.vcxproj*
+/*.sln
+
+# Xcode
+/*.xcodeproj
+/*.xcworkspace
+
+# --- CMake packaging & install ----------------
+/_CPack_Packages/
+/Testing/
+/CTestTestfile.cmake
+/DartConfiguration.tcl
+
+# --- Generated files --------------------------
+/src/prism/version.h
+
+# --- Editor & IDE artefacts -------------------
+# VSCode
+/.vscode/
+/*.code-workspace
+
+# CLion / IntelliJ
+/.idea/
+/cmake-build-debug/
+/cmake-build-release/
+
+# Vim / Emacs / etc.
+/*.swp
+*~
+.#*
+
+# --- OS junk ----------------------------------
+.DS_Store
+Thumbs.db
+
+# etc
+memo.txt

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    # 1. checkout
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    # 2. Windows: MSVC env (vcvars)  ── Ninja 不要
+    - name: Setup MSVC env
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    # 3. Configure
+    - name: Configure (CMake)
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          # VS Generator + ClangCL toolset
+          cmake -B build -G "Visual Studio 17 2022" -A x64 -T ClangCL \
+                -DPRISM_BUILD_TESTS=ON \
+                -DPRISM_BUILD_SAMPLES=OFF \
+                -DCMAKE_BUILD_TYPE=Release
+        else
+          cmake -B build \
+                -DPRISM_BUILD_TESTS=ON \
+                -DPRISM_BUILD_SAMPLES=OFF \
+                -DCMAKE_BUILD_TYPE=Release
+        fi
+
+    # 4. Build  (VS: multi-config, Make: single-config)
+    - name: Build
+      shell: bash
+      run: cmake --build build --parallel --config Release
+
+    # 5. Test
+    - name: Run tests
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          ctest --test-dir build --output-on-failure -C Release   # VS17 マルチ構成
+        else
+          ctest --test-dir build --output-on-failure               # Unix Makefiles
+        fi
