@@ -165,5 +165,5 @@ std::vector<AstDiffStep> detach_cross_edges(const std::shared_ptr<AstNode>& subR
     return diff;
 }
 
-}
-}
+}  // namespace inner_transform
+}  // namespace prismcascade::ast

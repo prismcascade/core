@@ -259,4 +259,4 @@ std::string to_string(PluginType variable_type) {
             return "(unknown type)";
     }
 }
-}
+}  // namespace prismcascade

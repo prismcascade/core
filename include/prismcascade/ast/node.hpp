@@ -70,4 +70,4 @@ struct AstNode {
     void resize_outputs(const std::vector<std::vector<VariableType>>& types);
 };
 
-}
+}  // namespace prismcascade::ast

@@ -64,10 +64,10 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     TopoResult res;
     if (!root) return res;
 
-    std::unordered_map<std::int64_t, TopSortDfsMark>     mark;
-    std::unordered_map<std::int64_t, RankInfo> info;
-    std::vector<std::shared_ptr<ast::AstNode>> callstack, topo;
-    memory::timestamp_t                        counter = 0;
+    std::unordered_map<std::int64_t, TopSortDfsMark> mark;
+    std::unordered_map<std::int64_t, RankInfo>       info;
+    std::vector<std::shared_ptr<ast::AstNode>>       callstack, topo;
+    memory::timestamp_t                              counter = 0;
 
     // 普通にDFS
     const bool success = dfs(root, mark, info, callstack, topo, res.cycle_path, counter);
@@ -164,4 +164,4 @@ TopoResult topological_sort(const std::shared_ptr<ast::AstNode>& root) {
     return res;
 }
 
-}
+}  // namespace prismcascade::scheduler

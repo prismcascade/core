@@ -78,4 +78,4 @@ struct ParameterPack {
 };
 }
 
-}
+}  // namespace prismcascade

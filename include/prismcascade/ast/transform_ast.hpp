@@ -15,7 +15,6 @@ struct AstDiffStep {
 
 namespace internal_transform {
 
-
 // 部分木もしくは即値を切り離す
 std::vector<AstDiffStep> cut(const std::shared_ptr<AstNode>& parent, std::uint64_t index);
 // 部分木もしくは即値を割り当てる
@@ -23,6 +22,6 @@ std::vector<AstDiffStep> assign(const std::shared_ptr<AstNode>& parent, std::uin
 // subtree境界をまたぐ sub_edge を全て切断する
 std::vector<AstDiffStep> detach_cross_edges(const std::shared_ptr<ast::AstNode>& sub_root);
 
-}
-}
-}
+}  // namespace internal_transform
+}  // namespace ast
+}  // namespace prismcascade

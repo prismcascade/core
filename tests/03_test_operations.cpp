@@ -291,7 +291,8 @@ TEST(OperationAllowCross, CrossEdgesPrunedIfFalse) {
     EXPECT_TRUE(std::holds_alternative<std::monostate>(R->inputs[0]));
 
     /* undo → R の接続が戻るか？ */
-    for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = diff.rbegin(); it != diff.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
 
     EXPECT_FALSE(std::holds_alternative<std::monostate>(R->inputs[0]));
 }
@@ -338,7 +339,8 @@ TEST(OperationMoveDeep, TripleNestMoveUndoRedo) {
     EXPECT_TRUE(B->inputs[0].index() == 0);  // B のスロットは空
 
     /* undo → もとに戻る */
-    for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = diff.rbegin(); it != diff.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
 
     EXPECT_TRUE(inputIsNode(B, 0, C));
 

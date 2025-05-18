@@ -20,7 +20,7 @@ struct rational_fps_t {
 // 1 フレームあたりの整数ステップ値。
 //   step == 0 は 「on-demand スカラー」 を表す特殊値
 struct frame_step_t {
-    timestamp_t step{0};
+    timestamp_t    step{0};
     constexpr bool is_on_demand() const noexcept { return step == 0; }
 };
 
@@ -34,4 +34,4 @@ inline frame_step_t to_step(rational_fps_t fps, std::uint64_t lcm_den) noexcept 
 
 static_assert(std::numeric_limits<timestamp_t>::digits >= 127, "timestamp_t width must be ≥ 128 bits");
 
-}
+}  // namespace prismcascade::memory

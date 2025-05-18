@@ -61,7 +61,8 @@ TEST(TransformAssign, ParentAndBackrefsUpdate) {
     EXPECT_EQ(C->parent.lock(), P);
 
     /* undo */
-    for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = diff.rbegin(); it != diff.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
     EXPECT_FALSE(inputIsChild(P, 0, C));
     EXPECT_TRUE(C->parent.expired());
 }
@@ -75,7 +76,8 @@ TEST(TransformAssign, SubEdgeBackrefUpdate) {
     EXPECT_TRUE(hasBackRef(A, 0, B, 0));
 
     /* undo */
-    for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = diff.rbegin(); it != diff.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
     EXPECT_FALSE(hasBackRef(A, 0, B, 0));
 }
 
@@ -129,7 +131,8 @@ TEST(TransformDetach, InnerOuterEdgesBothDirections) {
     EXPECT_FALSE(inputIsSubEdge(X, 0, ast::SubEdge{A, 0}));
 
     /* undo */
-    for (auto it = steps.rbegin(); it != steps.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = steps.rbegin(); it != steps.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
     EXPECT_TRUE(hasBackRef(A, 0, X, 0));
     EXPECT_TRUE(inputIsSubEdge(X, 0, ast::SubEdge{A, 0}));
 }
@@ -148,8 +151,10 @@ RC_GTEST_PROP(TransformProp, AssignIsInvolution, ()) {
     auto d2 = ast::internal_transform::assign(P, 0, v2);
 
     /* undo d2 then d1 */
-    for (auto it = d2.rbegin(); it != d2.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
-    for (auto it = d1.rbegin(); it != d1.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = d2.rbegin(); it != d2.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = d1.rbegin(); it != d1.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
 
     RC_ASSERT(P->inputs[0].index() == 0);  // monostate
 }
@@ -214,7 +219,8 @@ TEST(DetachNoTouch, InnerToInnerKept) {
     EXPECT_TRUE(inputIsSubEdge(C, 0, ast::SubEdge{A, 0}));
 
     /* undo も念のため動くか確認 */
-    for (auto it = steps.rbegin(); it != steps.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = steps.rbegin(); it != steps.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
 
     EXPECT_TRUE(hasBackRef(A, 0, C, 0));
     EXPECT_TRUE(inputIsSubEdge(C, 0, ast::SubEdge{A, 0}));
@@ -266,7 +272,8 @@ TEST(DetachUndo, FullRoundTrip) {
     EXPECT_FALSE(inputIsSubEdge(X, 0, ast::SubEdge{A, 0}));
 
     /* undo 全適用 */
-    for (auto it = steps.rbegin(); it != steps.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+    for (auto it = steps.rbegin(); it != steps.rend(); ++it)
+        ast::internal_transform::assign(it->node, it->index, it->old_value);
 
     EXPECT_TRUE(hasBackRef(A, 0, X, 0));
     EXPECT_TRUE(inputIsSubEdge(X, 0, ast::SubEdge{A, 0}));
@@ -373,7 +380,8 @@ TEST(TransformExtended, VariantAssignRoundTripForAllTypes) {
     auto roundTrip = [&](auto value) {
         auto diff = ast::internal_transform::assign(N, 0, value);
         // undo → monostate に戻るはず
-        for (auto it = diff.rbegin(); it != diff.rend(); ++it) ast::internal_transform::assign(it->node, it->index, it->old_value);
+        for (auto it = diff.rbegin(); it != diff.rend(); ++it)
+            ast::internal_transform::assign(it->node, it->index, it->old_value);
         EXPECT_TRUE(std::holds_alternative<std::monostate>(N->inputs[0]));
     };
 

@@ -22,4 +22,4 @@ class DynamicLibrary {
     std::shared_ptr<void> handle_;  // Windows: HMODULE, Linux: void*
 };
 
-}
+}  // namespace prismcascade::plugin

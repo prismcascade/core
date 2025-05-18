@@ -18,4 +18,4 @@ std::vector<AstDiffStep> substitute(const std::shared_ptr<ast::AstNode>& parent,
 void redo(const std::vector<AstDiffStep>& diff);
 void undo(const std::vector<AstDiffStep>& diff);
 
-}
+}  // namespace prismcascade::ast
