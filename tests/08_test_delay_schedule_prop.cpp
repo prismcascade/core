@@ -54,8 +54,8 @@ static std::vector<EdgeInfo> collectEdges(const std::vector<std::shared_ptr<ast:
 }
 
 // デバッグ用
-
-auto show_delay_impl = [&](auto result, const char* name, const std::shared_ptr<ast::AstNode>& node) {
+void show_delay_impl(prismcascade::scheduler::TopoResult result, const char* name,
+                     const std::shared_ptr<ast::AstNode>& node) {
     auto maybe_delay = result.ranks.at(node->plugin_instance_handler).delay;
     std::cout << "delay(" << name << ") = ";
     if (maybe_delay)
