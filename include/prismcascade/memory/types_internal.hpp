@@ -22,11 +22,11 @@ class ParameterMemory {
     virtual void refresh_parameter_struct() = 0;
 };
 
-// -------------------------------- //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 std::shared_ptr<ParameterMemory> make_empty_value(const std::vector<VariableType>& types);
 
-// -------------------------------- //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 class IntParamMemory : public ParameterMemory {
    public:
@@ -61,7 +61,7 @@ class FloatParamMemory : public ParameterMemory {
     double parameter_instance_{};
 };
 
-// -------------------------------- //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 class VideoFrameMemory : public ParameterMemory {
    public:
@@ -148,7 +148,7 @@ class ParameterPackMemory {
     ParameterPack          parameter_pack_instance_{};
     std::vector<Parameter> buffer_;
 };
-}  // namespace memory
+}
 
 // プラグインのメタデータ
 std::string to_string(VariableType variable_type);

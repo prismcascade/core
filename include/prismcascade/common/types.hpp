@@ -5,7 +5,7 @@ namespace prismcascade {
 
 extern "C" {
 
-// ── 列挙型 ─────────────────────────────
+// Enum
 enum class VariableType { Int, Bool, Float, Text, Vector, Video, Audio };
 
 enum class PluginType {
@@ -13,7 +13,7 @@ enum class PluginType {
     Effect,
 };
 
-// ── メタデータ ─────────────────────────
+// メタデータ
 struct VideoMetaData {
     std::uint32_t width        = 0;
     std::uint32_t height       = 0;
@@ -78,4 +78,4 @@ struct ParameterPack {
 };
 }
 
-}  // namespace prismcascade
+}

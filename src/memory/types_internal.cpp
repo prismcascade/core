@@ -6,9 +6,9 @@
 namespace prismcascade {
 namespace memory {
 
-/* ────────────────────────────────────────────── */
-/*  ParameterMemory (base)                        */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//       ParameterMemory (base)      //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 ParameterMemory::ParameterMemory(VariableType type) : type_{type} {}
 
 const Parameter& ParameterMemory::get_paramter_struct() {
@@ -37,9 +37,9 @@ std::shared_ptr<ParameterMemory> make_empty_value(const std::vector<VariableType
     }
 }
 
-/* ────────────────────────────────────────────── */
-/*  Int / Bool / Float                            */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//        Int / Bool / Float         //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 IntParamMemory::IntParamMemory() : ParameterMemory(VariableType::Int) {}
 std::int64_t& IntParamMemory::buffer() { return parameter_instance_; }
 void          IntParamMemory::refresh_parameter_struct() {
@@ -67,9 +67,9 @@ void    FloatParamMemory::refresh_parameter_struct() {
 
 std::size_t FloatParamMemory::get_memory_usage() { return sizeof(FloatParamMemory); };
 
-/* ────────────────────────────────────────────── */
-/*  VideoFrameMemory                              */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//         VideoFrameMemory          //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 VideoFrameMemory::VideoFrameMemory() : ParameterMemory(VariableType::Video) {}
 void VideoFrameMemory::update_metadata(VideoMetaData metadata) {
@@ -98,9 +98,9 @@ std::size_t VideoFrameMemory::get_memory_usage() {
     return sizeof(VideoFrameMemory) + buffer_.size() * sizeof(buffer_.at(0));
 };
 
-/* ────────────────────────────────────────────── */
-/*  AudioParamMemory                              */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//          AudioParamMemory         //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 
 AudioParamMemory::AudioParamMemory() : ParameterMemory(VariableType::Audio) {}
 void AudioParamMemory::update_metadata(AudioMetaData metadata) {
@@ -128,9 +128,9 @@ std::size_t AudioParamMemory::get_memory_usage() {
     return sizeof(AudioParamMemory) + buffer_.size() * sizeof(buffer_.at(0));
 };
 
-/* ────────────────────────────────────────────── */
-/*  TextParamMemory                               */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//         TextParamMemory           //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 TextParamMemory::TextParamMemory() : ParameterMemory(VariableType::Text) {}
 void TextParamMemory::assign_text(const char* text) {
     buffer_ = std::string(text);
@@ -154,9 +154,9 @@ std::size_t TextParamMemory::get_memory_usage() {
     return sizeof(TextParamMemory) + buffer_.size() * sizeof(buffer_.at(0));
 };
 
-/* ────────────────────────────────────────────── */
-/*  VectorParamMemory                             */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//        VectorParamMemory          //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 VectorParamMemory::VectorParamMemory(VariableType inner_type)
     : ParameterMemory(VariableType::Vector), inner_type_{inner_type} {}
 void VectorParamMemory::allocate_vector(std::uint64_t size) {
@@ -191,9 +191,9 @@ std::size_t VectorParamMemory::get_memory_usage() {
     return result_size;
 };
 
-/* ────────────────────────────────────────────── */
-/*  ParameterPackMemory                           */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//        ParameterPackMemory        //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 void ParameterPackMemory::update_types(const std::vector<std::vector<VariableType>>& types) {
     // TODO: optimize
     memory_buffer_.clear();
@@ -225,9 +225,9 @@ std::size_t ParameterPackMemory::get_memory_usage() {
 
 }  // namespace memory
 
-/* ────────────────────────────────────────────── */
-/*  to_string helpers                             */
-/* ────────────────────────────────────────────── */
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
+//         to_string helpers         //
+// -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+- //
 std::string to_string(VariableType variable_type) {
     switch (variable_type) {
         case VariableType::Int:
@@ -259,4 +259,4 @@ std::string to_string(PluginType variable_type) {
             return "(unknown type)";
     }
 }
-}  // namespace prismcascade
+}
